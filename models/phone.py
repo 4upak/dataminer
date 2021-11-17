@@ -1,8 +1,10 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from database import Base
+from sqlalchemy.ext.declarative import declarative_base
 
-class Phone(Base)
+Base = declarative_base()
+
+class Phone(Base):
     __tablename__ = 'dataminer_phone'
     phone_id = Column(Integer, primary_key=True)
     tel = Column(String, nullable=False)

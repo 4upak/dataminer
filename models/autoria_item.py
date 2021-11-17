@@ -1,19 +1,21 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 
-from database import Base
+from sqlalchemy.ext.declarative import declarative_base
 
-class Autoria_item(Base)
+Base = declarative_base()
+
+class Autoria_item(Base):
     __tablename__ = 'dataminer_phone'
 
     id = Column(Integer, primary_key=True)
     item_url = Column(String(250))
-    item_id = Column(Integer(10),unique=True, nullable=False)
+    item_id = Column(Integer,unique=True, nullable=False)
     tel_id = ForeignKey(dataminer_phone.phone_id)
     person_name = Column(String(20))
     price = Column(Integer, default=0)
     car_id = ForeignKey(dataminer_car.car_id)
     car_name = Column(String(150))
-    km = Column(Integer(10),default=0)
+    km = Column(Integer,default=0)
     city = Column(String(100))
     update_date = DateTime(default=datetime.datetime.utcnow)
     creation_date = DateTime(default=datetime.datetime.utcnow)
