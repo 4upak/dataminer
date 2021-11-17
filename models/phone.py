@@ -1,15 +1,13 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
-
+from database import Base
 class Phone(Base):
     __tablename__ = 'dataminer_phone'
     phone_id = Column(Integer, primary_key=True)
-    tel = Column(String, nullable=False)
-    geo = Column(String, default="-")
-    operator = Column(String, default="-")
+    tel = Column(Integer, nullable=False)
+    geo = Column(String(5), default="-")
+    operator = Column(String(20), default="-")
 
     def __init__(self, tel: str, geo: str, operator: str):
         self.tel = tel
