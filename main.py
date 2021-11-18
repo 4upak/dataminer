@@ -171,13 +171,11 @@ def filter_links(links):
     exist_ids = []
     for row in rows:
         exist_ids.append(int(row.item_id))
-    #print(exist_ids)
-    #print(exist_ids)
     item_ids = set(item_ids)
     exist_ids = set(exist_ids)
 
 
-    filtered_ids = list(item_ids-exist_ids)
+    filtered_ids = list(item_ids.difference(exist_ids))
 
     for link in links:
 
@@ -186,15 +184,16 @@ def filter_links(links):
         if not re.search('newauto', link) and link_item_id in(filtered_ids):
             filtered_links.append(link)
 
-    return filtered_links
+    result_list = []
 
+    for link in filtered_links:
+        if link not in result_list:
+            result_list.append(link)
+    return result_list
 
 def insert_phone_to_db(tel):
     phone = Phone(tel, 'ua', 'life')
-    try:
-        row = session.query(Phone.phone_id).filter(Phone.tel == tel).first()
-    except Exception as ex:
-        print(ex)
+    row = session.query(Phone.phone_id).filter(Phone.tel == tel).first()
     if row:
         phone.phone_id = row.phone_id
     else:
@@ -236,7 +235,7 @@ def get_seller(link):
                 func.now()
             )
             session.add(autoria_item)
-            session.flush()
+            session.commit()
             return True
         else:
             return False
@@ -244,8 +243,10 @@ def get_seller(link):
         return False
 
 def get_seller_multiprocess(link):
-    get_seller(link)
-    session.commit()
+    try:
+        get_seller(link)
+    except Exception as ex:
+        print(ex)
 
 def get_seller_info_by_brand(brand_url,page_num):
     print(f"Start parsing {brand_url}, {page_num} pages")
@@ -269,8 +270,6 @@ def get_seller_info_by_brand(brand_url,page_num):
                 p.terminate()
         else:
             continue
-
-        session.commit()
     return True
 
 def test_function():
@@ -286,7 +285,7 @@ def main():
     max_page_num = 1000
     print('Creating brand_list')
     brand_list = get_brand_numbered_list(url,max_page_num)
-    for (brand_url,page_num) in tqdm(brand_list.items()):
+    for (brand_url,page_num) in brand_list.items():
         get_seller_info_by_brand(brand_url,page_num)
 
 # Press the green button in the gutter to run the script.
