@@ -6,7 +6,7 @@ from database import Base
 class Car(Base):
     __tablename__ = 'dataminer_car'
     car_id = Column(Integer, primary_key=True)
-    vin = Column(String(17), unique=True, nullable=False)
+    vin = Column(String(17), nullable=False)
     name = Column(String(250))
     regnum = Column(String(15), nullable=False)
 

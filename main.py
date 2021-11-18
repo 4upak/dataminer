@@ -6,6 +6,7 @@ from database import Base,session,engine
 from models.autoria_item import Autoria_item, Phone, Car
 import re
 from multiprocessing import Pool
+from sqlalchemy.sql import func
 
 
 
@@ -151,48 +152,64 @@ def get_car_link_list(source):
     else:
         return link_list
 
-def filter_links(links):
+def get_id_from_item_url(url):
+    regxp = re.compile('_')
+    if regxp.search(url):
+        link_data = url.split("_")
+        return int(link_data[len(link_data) - 1].replace('.html', ''))
+    else:
+        link_data = url.split("-")
+        return int(link_data[len(link_data) - 1].replace('.html', ''))
 
+def filter_links(links):
     filtered_links = []
     item_ids = []
     for link in links:
-        link_data = link.split("_")
-        item_ids.append(link_data[len(link_data) - 1].replace('.html', ''))
+            item_ids.append(get_id_from_item_url(link))
 
-    exist_ids = session.query(Autoria_item.item_id).filter(Autoria_item.item_id.in_(item_ids)).all()
-
+    rows = session.query(Autoria_item.item_id).filter(Autoria_item.item_id.in_(item_ids)).all()
+    exist_ids = []
+    for row in rows:
+        exist_ids.append(int(row.item_id))
+    #print(exist_ids)
+    #print(exist_ids)
     item_ids = set(item_ids)
     exist_ids = set(exist_ids)
 
-    filtered_ids = list(item_ids.difference(exist_ids))
+
+    filtered_ids = list(item_ids-exist_ids)
 
     for link in links:
-        link_data = link.split("_")
-        link_item_id = link_data[len(link_data) - 1].replace('.html', '')
+
+        link_item_id = get_id_from_item_url(link)
 
         if not re.search('newauto', link) and link_item_id in(filtered_ids):
             filtered_links.append(link)
 
     return filtered_links
 
-def insert_phone_to_db(phone):
 
-
-    res = session.query(Phone.phone_id).filter(Phone.phone_id == phone).one()
-    print(res)
-
-    if len(res['rows'])>0:
-        res = res['rows'][0].get('id')
-
+def insert_phone_to_db(tel):
+    phone = Phone(tel, 'ua', 'life')
+    try:
+        row = session.query(Phone.phone_id).filter(Phone.tel == tel).first()
+    except Exception as ex:
+        print(ex)
+    if row:
+        phone.phone_id = row.phone_id
     else:
-        sql = f"INSERT INTO tel(id,tel) VALUES(NULL,'{phone}')"
-        print(sql)
-        db.executeSQL(sql)
-        res = db.lastInsertId()
-        return res
-    return res
+        try:
+            session.add(phone)
+            session.flush()
+        except Exception as ex:
+            print(ex)
+    return phone.phone_id
 
-def insert_car_to_db(car):
+def insert_car_to_db(vin,name,regnum):
+    car = Car(vin,name,regnum)
+    session.add(car)
+    session.flush()
+    return car.car_id
 
 def get_seller(link):
     sourse = get_source_html(link)
@@ -202,23 +219,36 @@ def get_seller(link):
             link_data = link.split("_")
             item_id = link_data[len(link_data)-1].replace('.html','')
             seller['tel_id'] = insert_phone_to_db(seller.get('phone'))
+            seller['car_id'] = insert_car_to_db(seller['vin'],seller['car'],seller['regnum'])
             seller['item_url'] = link
             seller['item_id'] = item_id
-            return seller
+
+            autoria_item = Autoria_item(
+                link,
+                seller['item_id'],
+                seller['tel_id'],
+                seller['name'],
+                seller['price'],
+                seller['car_id'],
+                seller['km'],
+                seller['city'],
+                func.now(),
+                func.now()
+            )
+            session.add(autoria_item)
+            session.flush()
+            return True
         else:
             return False
     else:
         return False
 
 def get_seller_multiprocess(link):
-    seller = get_seller(link)
-    print(seller)
-    if seller:
-        insert_seller_info_to_db(seller)
+    get_seller(link)
+    session.commit()
 
 def get_seller_info_by_brand(brand_url,page_num):
     print(f"Start parsing {brand_url}, {page_num} pages")
-
     for i in tqdm(range(1, int(page_num) + 1)):
         if i == 1:
             brand_current_url = brand_url
@@ -236,27 +266,29 @@ def get_seller_info_by_brand(brand_url,page_num):
             except Exception as ex:
                 print(ex)
                 print("Multiprocessing error, remaking Pool")
-            p.terminate()
+                p.terminate()
         else:
             continue
 
+        session.commit()
     return True
 
 def test_function():
-    phone = Phone()
+
+    brand_url = 'https://auto.ria.com/car/volkswagen/'
+    page_num = '10'
+    get_seller_info_by_brand(brand_url, page_num)
 
 def main():
     create_db(engine)
+    #test_function()
     url = "https://auto.ria.com/uk/car/"
-    max_page_num = 20
-    #brand_list = get_brand_numbered_list(url,max_page_num)
-
-    #get_seller_info_by_brand('https://auto.ria.com/uk/car/volkswagen/',1)
-
-
-
+    max_page_num = 1000
+    print('Creating brand_list')
+    brand_list = get_brand_numbered_list(url,max_page_num)
+    for (brand_url,page_num) in tqdm(brand_list.items()):
+        get_seller_info_by_brand(brand_url,page_num)
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print("work")
     main()

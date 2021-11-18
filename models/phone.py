@@ -5,7 +5,7 @@ from database import Base
 class Phone(Base):
     __tablename__ = 'dataminer_phone'
     phone_id = Column(Integer, primary_key=True)
-    tel = Column(Integer, nullable=False)
+    tel = Column(String(15), nullable=False, unique=True)
     geo = Column(String(5), default="-")
     operator = Column(String(20), default="-")
 
@@ -15,4 +15,4 @@ class Phone(Base):
         self.operator = operator
 
     def __repr__(self):
-        return f'Tel: {self.tel}; Geo: {self.geo}; Operator: {self.operator}'
+        return f'Tel_id: {self.phone_id}; Tel: {self.tel}; Geo: {self.geo}; Operator: {self.operator}'
