@@ -22,6 +22,7 @@ class Autoria_item(Base):
     update_date = Column(DateTime(timezone=True), onupdate=func.now())
     creation_date = Column(DateTime(timezone=True), onupdate=func.now())
 
+
     def __init__(self, item_url, item_id, tel_id, person_name, price, car_id, car_name, km, city, update_date, creation_date):
         self.item_url = item_url
         self.item_id = item_id

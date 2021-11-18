@@ -313,7 +313,6 @@ def get_seller_info_by_brand(brand_url, page_num, driver):
 
 
 def main():
-    driver = get_web_driver_object("/Users/serg/Desktop/python/chromedriver")
 
     brand_urls_numbered = get_brand_numbered_list(driver)
     for (brand_url, page_num) in brand_urls_numbered.items():

@@ -11,8 +11,8 @@ db_port = '3306'
 
 Base = declarative_base()
 url = f'mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}'
-print(url)
-engine = create_engine(url, echo=True)
+engine = create_engine(url, echo=False)
 
 Session = sessionmaker(bind=engine)
-Base = declarative_base()
+session = Session()
+session._model_changes = {}
