@@ -104,7 +104,7 @@ def get_seller_info(source):
             'phone': phone,
             'price' : price,
             'car': car,
-            'regnum':number,
+            'regnum':number.strip(),
             'vin':vin,
             'km':km,
             'city':city
@@ -153,13 +153,17 @@ def get_car_link_list(source):
         return link_list
 
 def get_id_from_item_url(url):
-    regxp = re.compile('_')
-    if regxp.search(url):
-        link_data = url.split("_")
-        return int(link_data[len(link_data) - 1].replace('.html', ''))
-    else:
-        link_data = url.split("-")
-        return int(link_data[len(link_data) - 1].replace('.html', ''))
+    try:
+        regxp = re.compile('_')
+        if regxp.search(url):
+            link_data = url.split("_")
+            return int(link_data[len(link_data) - 1].replace('.html', ''))
+        else:
+            link_data = url.split("-")
+            return int(link_data[len(link_data) - 1].replace('.html', ''))
+    except Exception as ex:
+        print(ex)
+        return 0
 
 def filter_links(links):
     filtered_links = []
@@ -171,11 +175,20 @@ def filter_links(links):
     exist_ids = []
     for row in rows:
         exist_ids.append(int(row.item_id))
+
     item_ids = set(item_ids)
+    print("\nitem_ids")
+    print(item_ids)
+
+
     exist_ids = set(exist_ids)
+    print("\nexist_ids")
+    print(exist_ids)
 
 
     filtered_ids = list(item_ids.difference(exist_ids))
+    print("\nfiltered_ids")
+    print(filtered_ids)
 
     for link in links:
 
@@ -189,7 +202,14 @@ def filter_links(links):
     for link in filtered_links:
         if link not in result_list:
             result_list.append(link)
+
+    print("\nresult_list")
+    print(result_list)
+
     return result_list
+
+def get_phone_info(tel):
+    pass
 
 def insert_phone_to_db(tel):
     phone = Phone(tel, 'ua', 'life')
@@ -211,35 +231,38 @@ def insert_car_to_db(vin,name,regnum):
     return car.car_id
 
 def get_seller(link):
-    sourse = get_source_html(link)
-    if sourse:
-        seller = get_seller_info(sourse)
-        if len(seller) > 0 and seller.get('phone'):
-            link_data = link.split("_")
-            item_id = link_data[len(link_data)-1].replace('.html','')
-            seller['tel_id'] = insert_phone_to_db(seller.get('phone'))
-            seller['car_id'] = insert_car_to_db(seller['vin'],seller['car'],seller['regnum'])
-            seller['item_url'] = link
-            seller['item_id'] = item_id
+    try:
+        sourse = get_source_html(link)
+        if sourse:
+            seller = get_seller_info(sourse)
+            if len(seller) > 0 and seller.get('phone'):
+                link_data = link.split("_")
+                item_id = link_data[len(link_data)-1].replace('.html','')
+                seller['tel_id'] = insert_phone_to_db(seller.get('phone'))
+                seller['car_id'] = insert_car_to_db(seller['vin'],seller['car'],seller['regnum'])
+                seller['item_url'] = link
+                seller['item_id'] = item_id
 
-            autoria_item = Autoria_item(
-                link,
-                seller['item_id'],
-                seller['tel_id'],
-                seller['name'],
-                seller['price'],
-                seller['car_id'],
-                seller['km'],
-                seller['city'],
-                func.now(),
-                func.now()
-            )
-            session.add(autoria_item)
-            session.commit()
-            return True
+                autoria_item = Autoria_item(
+                    link,
+                    seller['item_id'],
+                    seller['tel_id'],
+                    seller['name'],
+                    seller['price'],
+                    seller['car_id'],
+                    seller['km'],
+                    seller['city'],
+                    func.now(),
+                    func.now()
+                )
+                session.add(autoria_item)
+                session.commit()
+                return True
+            else:
+                return False
         else:
             return False
-    else:
+    except Exception as ex:
         return False
 
 def get_seller_multiprocess(link):
