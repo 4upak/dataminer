@@ -10,7 +10,6 @@ from sqlalchemy.sql import func
 import sys, getopt
 
 
-
 def create_db(engine):
     Base.metadata.create_all(engine)
 
@@ -211,7 +210,7 @@ def get_phone_info(tel):
     pass
 
 def insert_phone_to_db(tel):
-    phone = Phone(tel, 'ua', 'life')
+    phone = Phone(tel)
     row = session.query(Phone.phone_id).filter(Phone.tel == tel).first()
     if row:
         phone.phone_id = row.phone_id
@@ -295,7 +294,16 @@ def get_seller_info_by_brand(brand_url,page_num):
     return True
 
 def test_function():
-    print('Testing')
+    phone = 380939675735
+    phone = '+'+str('+380939675735')
+    pn = phonenumbers.parse(phone)
+    print(pn)
+    geo = region_code_for_number(pn)
+    print(geo)
+
+    operator = carrier.name_for_number(pn,geo)
+    print(operator)
+
 
 def get_all_base():
     create_db(engine)
