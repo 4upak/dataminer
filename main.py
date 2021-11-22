@@ -7,6 +7,7 @@ from models.autoria_item import Autoria_item, Phone, Car
 import re
 from multiprocessing import Pool
 from sqlalchemy.sql import func
+import sys, getopt
 
 
 
@@ -177,18 +178,18 @@ def filter_links(links):
         exist_ids.append(int(row.item_id))
 
     item_ids = set(item_ids)
-    print("\nitem_ids")
-    print(item_ids)
+    #print("\nitem_ids")
+    #print(item_ids)
 
 
     exist_ids = set(exist_ids)
-    print("\nexist_ids")
-    print(exist_ids)
+    #print("\nexist_ids")
+    #print(exist_ids)
 
 
     filtered_ids = list(item_ids.difference(exist_ids))
-    print("\nfiltered_ids")
-    print(filtered_ids)
+    #print("\nfiltered_ids")
+    #print(filtered_ids)
 
     for link in links:
 
@@ -203,8 +204,6 @@ def filter_links(links):
         if link not in result_list:
             result_list.append(link)
 
-    print("\nresult_list")
-    print(result_list)
 
     return result_list
 
@@ -296,21 +295,41 @@ def get_seller_info_by_brand(brand_url,page_num):
     return True
 
 def test_function():
+    print('Testing')
 
-    brand_url = 'https://auto.ria.com/car/volkswagen/'
-    page_num = '10'
-    get_seller_info_by_brand(brand_url, page_num)
-
-def main():
+def get_all_base():
     create_db(engine)
-    #test_function()
     url = "https://auto.ria.com/uk/car/"
     max_page_num = 1000
     print('Creating brand_list')
-    brand_list = get_brand_numbered_list(url,max_page_num)
-    for (brand_url,page_num) in brand_list.items():
-        get_seller_info_by_brand(brand_url,page_num)
+    brand_list = get_brand_numbered_list(url, max_page_num)
+    for (brand_url, page_num) in brand_list.items():
+        get_seller_info_by_brand(brand_url, page_num)
 
-# Press the green button in the gutter to run the script.
+def update_base():
+    pass
+
+def main(argumentList):
+    options = "a:h:"
+
+    long_options = []
+
+    try:
+        arguments, values = getopt.getopt(argumentList, options, long_options)
+        for currentArgument, currentValue in arguments:
+            if currentArgument in ("-a", "-action", "-act"):
+                if currentValue == "base":
+                    get_all_base()
+                elif currentValue == "test":
+                    test_function()
+                elif currentValue == "update":
+                    update_base()
+
+
+    except getopt.error as err:
+        # output error, and return with an error code
+        print(str(err))
+
+# Press the green button in thepython  gutter to run the script.
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
