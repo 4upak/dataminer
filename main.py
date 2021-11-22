@@ -315,7 +315,8 @@ def get_all_base():
         get_seller_info_by_brand(brand_url, page_num)
 
 def update_base():
-    pass
+    items = session.query(Autoria_item).limit(0,10)
+    print(items)
 
 def main(argumentList):
     options = "a:h:"

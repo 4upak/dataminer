@@ -20,9 +20,10 @@ class Autoria_item(Base):
     city = Column(String(100))
     update_date = Column(DateTime(timezone=True), onupdate=func.now())
     creation_date = Column(DateTime(timezone=True), onupdate=func.now())
+    sold = Column(Integer, nullable=False, default="0")
 
 
-    def __init__(self, item_url, item_id, tel_id, person_name, price, car_id, km, city, update_date, creation_date):
+    def __init__(self, item_url, item_id, tel_id, person_name, price, car_id, km, city, update_date, creation_date,sold):
         self.item_url = item_url
         self.item_id = item_id
         self.tel_id = tel_id
@@ -33,6 +34,7 @@ class Autoria_item(Base):
         self.city = city
         self.update_date = update_date
         self.creation_date = creation_date
+        self.sold = sold
 
     def __repr__(self):
         return f'item_url: {self.item_url};' \
