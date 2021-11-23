@@ -8,6 +8,7 @@ import re
 from multiprocessing import Pool
 from sqlalchemy.sql import func
 import sys, getopt
+import json
 
 
 def create_db(engine):
@@ -250,9 +251,10 @@ def get_seller(link):
                     seller['car_id'],
                     seller['km'],
                     seller['city'],
-                    func.now(),
-                    func.now()
+                    0
                 )
+                autoria_item.update_date = func.now()
+                autoria_item.creation_date = func.now()
                 session.add(autoria_item)
                 session.commit()
                 return True
@@ -261,6 +263,7 @@ def get_seller(link):
         else:
             return False
     except Exception as ex:
+        print(ex)
         return False
 
 def get_seller_multiprocess(link):
@@ -304,7 +307,6 @@ def test_function():
     operator = carrier.name_for_number(pn,geo)
     print(operator)
 
-
 def get_all_base():
     create_db(engine)
     url = "https://auto.ria.com/uk/car/"
@@ -314,9 +316,50 @@ def get_all_base():
     for (brand_url, page_num) in brand_list.items():
         get_seller_info_by_brand(brand_url, page_num)
 
+def get_statistic(item_id):
+    data = {}
+    try:
+        views_url = f"https://auto.ria.com/bu/final_page/views/{item_id}"
+        data['views'] = int(get_source_html(views_url).strip())
+    except Exception as ex:
+        print(ex)
+        data['views'] = 0
+
+    try:
+        notepad_url = f"https://auto.ria.com/uk/demo/bu/notepad/auto/statistic/{item_id}/"
+        json_data = json.loads(get_source_html(notepad_url))
+        data['saved'] = json_data['addCount']
+    except Exception as ex:
+        print(ex)
+        data['saved'] = 0
+
+
+    return data
+
+
 def update_base():
-    items = session.query(Autoria_item).limit(0,10)
-    print(items)
+    count = session.query(Autoria_item).count()
+    print(f"{count} items finded")
+    for i in range(0,count,50):
+        items = session.query(Autoria_item).offset(i).limit(50).all()
+        #print(items)
+        for item in tqdm(items):
+            soup = get_soup_object(item.item_url)
+            if soup.find("div", "sold-out"):
+                item.sold = 1
+
+            elif soup.find("div", id='autoDeletedTopBlock'):
+                item.sold = 2
+
+
+            stats = get_statistic(item.item_id)
+            item.views = stats.get('views')
+            item.saved = stats.get('saved')
+            session.add(item)
+            session.commit()
+
+
+
 
 def main(argumentList):
     options = "a:h:"
