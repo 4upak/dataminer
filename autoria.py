@@ -298,6 +298,7 @@ def get_seller_info_by_brand(brand_url,page_num):
                 p.terminate()
         else:
             continue
+
     return True
 
 def test_function():
@@ -314,13 +315,14 @@ def test_function():
 def get_all_base():
     create_db(engine)
     url = "https://auto.ria.com/uk/car/"
-    max_page_num = 1000
+    max_page_num = 200
     print('Creating brand_list')
     brand_list = get_brand_numbered_list(url, max_page_num)
     while 1:
         for (brand_url, page_num) in brand_list.items():
             get_seller_info_by_brand(brand_url, page_num)
-        print('Parsing finished, reloading')
+        print('Parsing finished, reloading after 1 our')
+        time.sleep(3600)
 
 def get_statistic(item_id):
     data = {}
