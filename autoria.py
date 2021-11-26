@@ -279,8 +279,12 @@ def get_seller_info_by_brand(brand_url,page_num):
             brand_current_url = brand_url
         else:
             brand_current_url = brand_url + '?page=' + str(i)
-        sourse = get_source_html(brand_current_url)
-        links = get_car_link_list(sourse)
+        try:
+            sourse = get_source_html(brand_current_url)
+            links = get_car_link_list(sourse)
+        except Exception as ex:
+            print(ex)
+            continue
 
 
         filtered_links = filter_links(links)

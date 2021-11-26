@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/datamining.iml" filepath="$PROJECT_DIR$/.idea/datamining.iml" />
-      <module fileurl="file://$PROJECT_DIR$/../parsinglearn/.idea/parsinglearn.iml" filepath="$PROJECT_DIR$/../parsinglearn/.idea/parsinglearn.iml" />
     </modules>
   </component>
 </project>
