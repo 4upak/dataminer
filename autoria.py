@@ -315,7 +315,7 @@ def test_function():
 def get_all_base():
     create_db(engine)
     url = "https://auto.ria.com/uk/car/"
-    max_page_num = 200
+    max_page_num = 1200
     print('Creating brand_list')
     brand_list = get_brand_numbered_list(url, max_page_num)
     while 1:
