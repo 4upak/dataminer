@@ -9,22 +9,14 @@ from multiprocessing import Pool
 from sqlalchemy.sql import func
 import sys, getopt
 import json
+from fglobal import check_proxy, read_proxy
 
+import random
 
 def create_db(engine):
     Base.metadata.create_all(engine)
 
 def get_source_html(url):
-    '''try:
-        driver.get(url)
-        driver.implicitly_wait(20)
-        #driver.find_element_by_css_selector("a.phone_show_link").click()
-        source = driver.page_source
-    except Exception as ex:
-        return False
-
-    else:
-        return source'''
 
     headers = {
         'Host': 'auto.ria.com',
@@ -39,8 +31,19 @@ def get_source_html(url):
         'Sec - Fetch - User': '?1',
         'Te': 'trailers'
     }
-    r = requests.get(url, headers=headers, verify=True)
-    return r.text
+    proxies = read_proxy()
+    try:
+        if len(proxies)>0:
+            proxy = proxies[random.randint(0,len(proxies)-1)]
+            r = requests.get(url, proxies=dict(
+                https=f'{proxy["type"]}://{proxy["login"]}:{proxy["pass"]}@{proxy["ip"]}:{proxy["port"]}',
+                http=f'{proxy["type"]}://{proxy["login"]}:{proxy["pass"]}@{proxy["ip"]}:{proxy["port"]}'
+            ), headers=headers,verify=True)
+        else:
+            r = requests.get(url, headers=headers, verify=True)
+        return r.text
+    except Exception as ex:
+        return False
 
 def get_soup_object(url):
     try:
@@ -371,7 +374,8 @@ def update_base():
     print(f"{count} items finded")
     while 1:
         for i in tqdm(range(0,count,10)):
-            items = session.query(Autoria_item).offset(i).limit(10).all()
+            proxies = read_proxy()
+            items = session.query(Autoria_item).offset(i).limit(len(proxies)-1).all()
 
             p = Pool(processes=len(items))
             try:
