@@ -2,13 +2,13 @@ import sys
 import getopt
 from fglobal import check_proxy, read_proxy
 
-
-def main(argumentList):
-    options = "a:h:"
+def update_proxy_list():
     print('Checking proxies')
     check_proxy()
     print(f'We have {len(read_proxy())} valid proxies in proxy list')
 
+def main(argumentList):
+    options = "a:h:"
     long_options = []
 
     try:
@@ -24,8 +24,9 @@ def main(argumentList):
                     from autoria import update_base
                     update_base()
                 elif currentValue == "telegram":
-                    from ftelethon import get_telergam_account
-                    print(get_telergam_account())
+                    from ftelethon import get_telergam_account, get_account_info
+                    accounts = get_telergam_account()
+                    print(get_account_info(accounts[0]))
 
 
     except getopt.error as err:

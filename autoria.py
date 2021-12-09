@@ -38,7 +38,7 @@ def get_source_html(url):
             r = requests.get(url, proxies=dict(
                 https=f'{proxy["type"]}://{proxy["login"]}:{proxy["pass"]}@{proxy["ip"]}:{proxy["port"]}',
                 http=f'{proxy["type"]}://{proxy["login"]}:{proxy["pass"]}@{proxy["ip"]}:{proxy["port"]}'
-            ), headers=headers,verify=True)
+            ), headers=headers,verify=True, timeout=30)
         else:
             r = requests.get(url, headers=headers, verify=True)
         return r.text

@@ -8,7 +8,7 @@ def checking_proxy(proxy):
             requests.get('https://google.com',proxies=dict(
                     https=f'{proxy["type"]}://{proxy["login"]}:{proxy["pass"]}@{proxy["ip"]}:{proxy["port"]}',
                     http=f'{proxy["type"]}://{proxy["login"]}:{proxy["pass"]}@{proxy["ip"]}:{proxy["port"]}'
-                ),verify=True, timeout=5)
+                ),verify=True, timeout=20)
             result = True
         except Exception as ex:
             result = False
