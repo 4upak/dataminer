@@ -2,7 +2,8 @@ import json
 from os import walk
 from models.autoria_item import Autoria_item, Phone, Car
 from models.telegram_account import Telegram_account
-from database import session
+
+from database import Base,session,engine
 
 def get_account_info(account):
     try:
@@ -34,12 +35,15 @@ def get_telergam_accounts():
     return sessions
 
 def create_telegram_accounts():
+    Base.metadata.create_all(engine)
     accounts = get_telergam_accounts()
     i = 0
     for account in accounts:
         data = get_account_info(account)
         data['telegram_user_id'] = 0
-        tg = Telegram_account(account)
+        data['phone_id'] = 1
+        data['proxy'] = '-'
+        tg = Telegram_account(data)
         session.add(tg)
         i+=1
 

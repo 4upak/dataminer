@@ -7,14 +7,14 @@ class Telegram_account(Base):
     __tablename__ = 'dataminer_telegram_account'
 
     telegram_id = Column(Integer, primary_key=True)
-    telegram_user_id = Column(Integer, nullable=False)
+    telegram_user_id = Column(Integer, nullable=True, default="0")
     session_file = Column(String(17), nullable=False)
-    phone_id = Column(Integer,unique=True, nullable=False)
+    phone_id = Column(Integer,unique=False, nullable=False)
     register_time = Column(Integer,unique=True, nullable=False, default="0")
     app_id = Column(Integer,unique=False, nullable=False, default="-")
     app_hash = Column(String(250), nullable=False, default="-")
     sdk = Column(String(10), nullable=False, default="-")
-    app_version=Column(String(10), nullable=False, default="-")
+    app_version=Column(String(20), nullable=False, default="-")
     device = Column(String(20), nullable=False, default="-")
     lang_pack = Column(String(10), nullable=False, default="-")
     success_registred = Column(Boolean, unique=False, default=True)
@@ -25,7 +25,7 @@ class Telegram_account(Base):
     last_check_time=Column(Integer, nullable=False, default="0")
     deleted = Column(Boolean, unique=False, default=False)
     password = Column(Boolean, unique=False, default=False)
-    password_str= Column(String(250), nullable=False)
+    password_str = Column(String(250), nullable=False)
     avatar = Column(String(250), default="-")
     username = Column(String(250), nullable=False)
 
@@ -33,27 +33,27 @@ class Telegram_account(Base):
 
 
     def __init__(self,data):
-        self.telegram_user_id = data['telegram_user_id']
+        self.telegram_user_id = int(data['telegram_user_id'])
         self.session_file = data['session_file']
-        self.phone_id = data['session_file']
-        self.register_time = data['session_file']
-        self.app_id = data['session_file']
-        self.app_hash = data['session_file']
-        self.sdk = data['session_file']
-        self.app_version = data['session_file']
-        self.device = data['session_file']
-        self.lang_pack = data['session_file']
-        self.success_registred = data['session_file']
-        self.proxy = data['session_file']
-        self.register_process = data['session_file']
-        self.first_name = data['session_file']
-        self.last_name = data['session_file']
-        self.last_check_time = data['session_file']
-        self.deleted = data['session_file']
-        self.password = data['session_file']
-        self.password_str = data['session_file']
-        self.avatar = data['session_file']
-        self.username = data['session_file']
+        self.phone_id = data['phone_id']
+        self.register_time = data['register_time']
+        self.app_id = data['app_id']
+        self.app_hash = data['app_hash']
+        self.sdk = data['sdk']
+        self.app_version = data['app_version']
+        self.device = data['device']
+        self.lang_pack = data['lang_pack']
+        self.success_registred = data['success_registred']
+        self.proxy = data['proxy']
+        self.register_process = data['register_process']
+        self.first_name = data['first_name']
+        self.last_name = data['last_name']
+        self.last_check_time = data['last_check_time']
+        self.deleted = data['deleted']
+        self.password = data['password']
+        self.password_str = data['password_str']
+        self.avatar = data['avatar']
+        self.username = data['username']
 
     def __repr__(self):
         return f'UserName: self.username;'
