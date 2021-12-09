@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/datamining.iml" filepath="$PROJECT_DIR$/.idea/datamining.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../telethon/.idea/telethon.iml" filepath="$PROJECT_DIR$/../telethon/.idea/telethon.iml" />
     </modules>
   </component>
 </project>
