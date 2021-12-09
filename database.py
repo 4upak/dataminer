@@ -13,6 +13,10 @@ Base = declarative_base()
 url = f'mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}'
 engine = create_engine(url, echo=False)
 
+
+Base.metadata.create_all(engine)
+
 Session = sessionmaker(bind=engine)
 session = Session()
 session._model_changes = {}
+

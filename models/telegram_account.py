@@ -10,30 +10,30 @@ class Telegram_account(Base):
     telegram_user_id = Column(Integer, nullable=False)
     session_file = Column(String(17), nullable=False)
     phone_id = Column(Integer,unique=True, nullable=False)
-    register_time = Column(Integer,unique=True, nullable=False)
-    app_id = column(Integer,unique=False, nullable=False)
-    app_hash = Column(String(250), nullable=False)
-    sdk = Column(String(10), nullable=False)
-    app_version=Column(String(10), nullable=False)
-    device = Column(String(20), nullable=False)
-    lang_pack= Column(String(10), nullable=False)
+    register_time = Column(Integer,unique=True, nullable=False, default="0")
+    app_id = Column(Integer,unique=False, nullable=False, default="-")
+    app_hash = Column(String(250), nullable=False, default="-")
+    sdk = Column(String(10), nullable=False, default="-")
+    app_version=Column(String(10), nullable=False, default="-")
+    device = Column(String(20), nullable=False, default="-")
+    lang_pack = Column(String(10), nullable=False, default="-")
     success_registred = Column(Boolean, unique=False, default=True)
-    proxy= Column(String(250), nullable=False)
-    register_process = Column(Boolean, unique=False, default=True)
-    first_name=Column(String(15), nullable=False)
-    last_name=Column(String(15), nullable=False)
-    last_check_time=Column(String(15), nullable=False)
-    deleted = Column(Boolean, unique=False, default=True)
-    password = Column(Boolean, unique=False, default=True)
+    proxy = Column(String(250), nullable=False, default="-")
+    register_process = Column(Boolean, unique=False, default=False)
+    first_name=Column(String(15), nullable=False, default="-")
+    last_name=Column(String(15), nullable=False, default="-")
+    last_check_time=Column(Integer, nullable=False, default="0")
+    deleted = Column(Boolean, unique=False, default=False)
+    password = Column(Boolean, unique=False, default=False)
     password_str= Column(String(250), nullable=False)
-    avatar = Column(String(250), nullable=False)
+    avatar = Column(String(250), default="-")
     username = Column(String(250), nullable=False)
 
 
 
 
-    def __init__(data):
-        telegram_user_id = data['telegram_user_id']
+    def __init__(self,data):
+        self.telegram_user_id = data['telegram_user_id']
         self.session_file = data['session_file']
         self.phone_id = data['session_file']
         self.register_time = data['session_file']
@@ -56,4 +56,4 @@ class Telegram_account(Base):
         self.username = data['session_file']
 
     def __repr__(self):
-        return f'Name: {self.name}; Vin: {self.vin}; Regnum: {self.regnum}'
+        return f'UserName: self.username;'

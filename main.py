@@ -24,9 +24,10 @@ def main(argumentList):
                     from autoria import update_base
                     update_base()
                 elif currentValue == "telegram":
-                    from ftelethon import get_telergam_account, get_account_info
-                    accounts = get_telergam_account()
-                    print(get_account_info(accounts[0]))
+                    from ftelethon import create_telegram_accounts
+                    acc_num = create_telegram_accounts()
+                    print(f"{acc_num} accounts created")
+
 
 
     except getopt.error as err:
