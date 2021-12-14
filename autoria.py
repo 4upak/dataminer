@@ -7,9 +7,8 @@ from models.autoria_item import Autoria_item, Phone, Car
 import re
 from multiprocessing import Pool
 from sqlalchemy.sql import func
-import sys, getopt
 import json
-from fglobal import check_proxy, read_proxy
+from fglobal import get_one_proxy, read_proxy
 
 import random
 
@@ -31,13 +30,13 @@ def get_source_html(url):
         'Sec - Fetch - User': '?1',
         'Te': 'trailers'
     }
-    proxies = read_proxy()
+
     try:
-        if len(proxies)>0:
-            proxy = proxies[random.randint(0,len(proxies)-1)]
+        proxy = get_one_proxy()
+        if proxy:
             r = requests.get(url, proxies=dict(
-                https=f'{proxy["type"]}://{proxy["login"]}:{proxy["pass"]}@{proxy["ip"]}:{proxy["port"]}',
-                http=f'{proxy["type"]}://{proxy["login"]}:{proxy["pass"]}@{proxy["ip"]}:{proxy["port"]}'
+                https=f'{proxy.type}://{proxy.login}:{proxy.password}@{proxy.host}:{proxy.port}',
+                http=f'{proxy.type}://{proxy.login}:{proxy.password}@{proxy.host}:{proxy.port}'
             ), headers=headers,verify=True, timeout=30)
         else:
             r = requests.get(url, headers=headers, verify=True)
@@ -50,7 +49,7 @@ def get_soup_object(url):
         sourse = get_source_html(url)
         soup = BeautifulSoup(sourse, "lxml")
     except Exception as ex:
-        print("Soup object creation failed")
+        #print("Soup object creation failed")
         return False
 
     else:
@@ -151,7 +150,7 @@ def get_car_link_list(source):
             link_list.append(item.attrs['href'])
 
     except Exception as ex:
-        print(ex)
+        #print(ex)
         return False
     else:
         return link_list
@@ -289,8 +288,12 @@ def get_seller_info_by_brand(brand_url,page_num):
             print(ex)
             continue
 
+        try:
+            filtered_links = filter_links(links)
+        except Exception as ex:
+            print(ex)
+            continue
 
-        filtered_links = filter_links(links)
         if len(filtered_links)>0:
             p = Pool(processes=len(filtered_links))
             try:
@@ -368,20 +371,25 @@ def udpade_multiprocess(item):
     session.add(item)
     session.commit()
 
-
 def update_base():
     count = session.query(Autoria_item).count()
     print(f"{count} items finded")
+    proxies = read_proxy()
+    flow_number = (len(proxies)-1)*2
+    if flow_number < 10:
+        flow_number = 10
+    if flow_number > 50:
+        flow_number = 50
     while 1:
-        for i in tqdm(range(0,count,10)):
-            proxies = read_proxy()
-            items = session.query(Autoria_item).offset(i).limit(len(proxies)-1).all()
-
+        for i in tqdm(range(0,count,flow_number)):
+            items = session.query(Autoria_item).offset(i).limit(flow_number).all()
             p = Pool(processes=len(items))
             try:
                  p.map(udpade_multiprocess, items)
             except Exception as ex:
                 p.terminate()
+            p.close()
+            p.terminate()
         print("Base update finished, reload after 3600 seconds")
         time.sleep(3600)
 

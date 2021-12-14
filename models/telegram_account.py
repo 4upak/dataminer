@@ -6,9 +6,9 @@ from database import Base
 class Telegram_account(Base):
     __tablename__ = 'dataminer_telegram_account'
 
-    telegram_id = Column(Integer, primary_key=True)
+    telegram_id = Column(Integer, primary_key=True,unique=True)
     telegram_user_id = Column(Integer, nullable=True, default="0")
-    session_file = Column(String(17), nullable=False)
+    session_file = Column(String(17), nullable=False, unique=True)
     phone_id = Column(Integer,unique=False, nullable=False)
     register_time = Column(Integer,unique=True, nullable=False, default="0")
     app_id = Column(Integer,unique=False, nullable=False, default="-")
@@ -25,9 +25,9 @@ class Telegram_account(Base):
     last_check_time=Column(Integer, nullable=False, default="0")
     deleted = Column(Boolean, unique=False, default=False)
     password = Column(Boolean, unique=False, default=False)
-    password_str = Column(String(250), nullable=False)
+    password_str = Column(String(250), nullable=False,default="-")
     avatar = Column(String(250), default="-")
-    username = Column(String(250), nullable=False)
+    username = Column(String(250), nullable=True, default='-')
 
 
 
@@ -45,15 +45,24 @@ class Telegram_account(Base):
         self.lang_pack = data['lang_pack']
         self.success_registred = data['success_registred']
         self.proxy = data['proxy']
-        self.register_process = data['register_process']
+
+        if 'register_process' in data:
+            self.register_process = data['register_process']
+
         self.first_name = data['first_name']
         self.last_name = data['last_name']
         self.last_check_time = data['last_check_time']
-        self.deleted = data['deleted']
-        self.password = data['password']
-        self.password_str = data['password_str']
+
+        if 'deleted' in data:
+            self.deleted = data['deleted']
+        if 'password' in data:
+            self.password = data['password']
+        if 'password_str' in data:
+            self.password_str = data['password_str']
+
+
         self.avatar = data['avatar']
         self.username = data['username']
 
     def __repr__(self):
-        return f'UserName: self.username;'
+        return f'UserName: {self.username}'

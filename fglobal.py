@@ -1,4 +1,7 @@
 import tqdm
+from database import Base,session,engine
+from models.proxy import Proxy
+import random
 
 def checking_proxy(proxy):
     import requests
@@ -14,10 +17,10 @@ def checking_proxy(proxy):
             result = False
     return result
 
-
 def check_proxy():
     f = open("proxy.txt", "r+")
     lines = f.readlines()
+    f.close()
     proxy_list = []
     for line in lines:
         proxy_data = line.strip().split(':')
@@ -29,33 +32,35 @@ def check_proxy():
         proxy['pass'] = proxy_data[4]
         proxy_list.append(proxy)
     final_proxi_list = []
-    f.seek(0)
+
+
     for proxy in proxy_list:
         if checking_proxy(proxy) == True:
             final_proxi_list.append(proxy)
-            text = f"{proxy['type']}:{proxy['ip']}:{proxy['port']}:{proxy['login']}:{proxy['pass']}\n"
-            f.write(text)
-        else:
-            print(f"{proxy['ip']} is not valid and deleted")
-    f.truncate()
-    f.close()
-    f.close()
+
+    session.query(Proxy).delete()
+    session.commit()
+    for proxy in final_proxi_list:
+        text = f"{proxy['type']}:{proxy['ip']}:{proxy['port']}:{proxy['login']}:{proxy['pass']}\n"
+        proxy_class = Proxy(text)
+        session.add(proxy_class)
+        session.flush()
+    session.commit()
 
     return final_proxi_list
 
-
 def read_proxy():
-    f = open("proxy.txt", "r+")
-    lines = f.readlines()
-    proxy_list = []
-    for line in lines:
-        proxy_data = line.strip().split(':')
-        proxy = dict()
-        proxy['type'] = proxy_data[0]
-        proxy['ip'] = proxy_data[1]
-        proxy['port'] = proxy_data[2]
-        proxy['login'] = proxy_data[3]
-        proxy['pass'] = proxy_data[4]
-        proxy_list.append(proxy)
-    f.close()
+    proxy_list = session.query(Proxy).all()
     return proxy_list
+
+def get_one_proxy():
+
+    proxies = read_proxy()
+    if len(proxies)>0:
+        proxy = proxies[random.randint(0, len(proxies) - 1)]
+        return proxy
+    else:
+        return False
+
+
+

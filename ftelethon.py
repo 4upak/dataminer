@@ -2,6 +2,23 @@ import json
 from os import walk
 from models.autoria_item import Autoria_item, Phone, Car
 from models.telegram_account import Telegram_account
+from telethon import TelegramClient, sync
+from models.proxy import Proxy
+from telethon import events
+from telethon import functions, types
+from telethon.tl.functions.messages import GetDialogsRequest
+from telethon.tl.types import InputPeerEmpty, PeerUser, PeerChat, PeerChannel, User, Channel, Chat
+from telethon.tl.functions.channels import LeaveChannelRequest
+from telethon.tl.functions.channels import JoinChannelRequest
+from telethon.tl.functions.users import GetFullUserRequest
+from telethon.tl.types import InputPhoneContact
+from telethon.tl.functions.contacts import ImportContactsRequest
+from database import Base,session,engine
+import socks
+import asyncio
+
+from models.autoria_item import Autoria_item
+from models.phone import Phone
 
 from database import Base,session,engine
 
@@ -14,17 +31,7 @@ def get_account_info(account):
         print(ex)
         return False
 
-def save_account_info(accont):
-    try:
-        f = open(f"taccounts/{accont}.json", "r")
-        with f as read_file:
-            return json.load(read_file)
-    except Exception as ex:
-        print(ex)
-        return False
-
-
-def get_telergam_accounts():
+def get_telergam_accounts_from_dir():
     dir_name = 'taccounts'
     sessions = []
     for (dirpath, dirnames, filenames) in walk(dir_name):
@@ -34,29 +41,188 @@ def get_telergam_accounts():
                 sessions.append(file_data[0])
     return sessions
 
-def create_telegram_accounts():
+def create_telegram_accounts_in_db():
     Base.metadata.create_all(engine)
-    accounts = get_telergam_accounts()
-    i = 0
-    for account in accounts:
+    accounts = get_telergam_accounts_from_dir()
+    existing_accounts = session.query(Telegram_account.session_file).all()
+    existing_accounts_set = set()
+    for account in existing_accounts:
+        existing_accounts_set.add(account[0])
+
+    new_accounts = set(accounts) - existing_accounts_set
+    count = 0
+    for account in new_accounts:
         data = get_account_info(account)
         data['telegram_user_id'] = 0
         data['phone_id'] = 1
         data['proxy'] = '-'
+
         tg = Telegram_account(data)
         session.add(tg)
-        i+=1
 
-    session.commit()
-    if i==0:
-        return false
+        count+=1
+    try:
+        session.commit()
+    except Exception as ex:
+        print(ex)
+        return False
+    return count
+
+def get_account_from_db():
+    try:
+        result =  session.query(Telegram_account).all()
+    except Exception as ex:
+        print(ex)
+        return False
+
+    return result
+
+def get_client(account):
+
+    from fglobal import get_one_proxy
+
+    if account.proxy!='-':
+        proxy = session.query(Proxy).filter(Proxy.host == account.proxy).first()
+        if isinstance(proxy,Proxy):
+            pass
+        else:
+            proxy = get_one_proxy()
+            account.proxy = proxy.host
+            session.add(account)
+            session.commit()
     else:
-        return i
+        proxy = get_one_proxy()
+        account.proxy = proxy.host
+        session.add(account)
+        session.commit()
+
+
+    print(vars(proxy))
+    if  proxy.port == 45786:
+        proxy.port = 45785
+    client = TelegramClient(f"taccounts/{account.session_file}", api_id=account.app_id, api_hash=account.app_hash,
+                            proxy=(socks.HTTP, proxy.host, proxy.port, False, proxy.login, proxy.password))
+    client.connect()
+    client.start()
+    if not client.is_user_authorized():
+        try:
+            client.get_me()
+        except telethon.errors.rpc_error_list.PhoneNumberBannedError:
+            print("Phone number is banned.")
+            client.disconnect()
+            return False
+    else:
+        return client
+
+def update_account_id(me,account):
+    account.telegram_user_id = me.id
+    try:
+        session.add(account)
+        session.flush()
+        session.commit()
+
+        return True
+    except Exception as ex:
+        print(ex)
+        return False
+
+
+async def do_something(client):
+    #await client.send_message('@goldjgold', 'Привет')
+    res = session.query(Autoria_item,Phone,Car).filter(Autoria_item.tel_id == Phone.phone_id).filter(Autoria_item.car_id == Car.car_id).filter(Autoria_item.sold == 0).offset(40).limit(100000).all()
+
+    me = await client.get_me()
+    for row in res:
+
+        try:
+
+            #contact = await client.get_entity()
+
+            contact = InputPhoneContact(client_id=0, phone=row[1].tel, first_name="", last_name="")
+            result = await client(ImportContactsRequest([contact]))
+
+            result = result.to_dict()
+            reciepient_id = result['imported'][0]['user_id']
+            phone = Phone(row[1].tel)
+            phone.phone_id = row[1].phone_id
+            phone.telegram_id = reciepient_id
+
+            session.query(Phone).filter(Phone.phone_id == row[1].phone_id).update({'telegram_id': reciepient_id})
+            session.commit()
+
+            if row[0].person_name != '-':
+                message = f"{row[0].person_name}, добрый день!"
+            else:
+                message = f"Привет!"
+
+            await client.send_message(reciepient_id, message)
+            print(f"{me.id} -> {reciepient_id}: {message}")
+            message = f"{row[2].name} еще продается?"
+            await asyncio.sleep(2)
+            await client.send_message(reciepient_id, message)
+            print(f"{me.id} -> {reciepient_id}: {message}")
+            await asyncio.sleep(300)
+
+
+
+
+        except Exception as ex:
+            print(f'[{ex}]{row[1].tel} has no telegram account')
+            await asyncio.sleep(10)
+
+
+        await asyncio.sleep(300)
+        me = await client.get_me()
+        #print(vars(client))
+
+
+async def telegram_autorespond_handle(client):
+    @client.on(events.NewMessage)
+    async def my_event_handler(event):
+        q = []
+        q.append("Какая актуальная цена?")
+        q.append("Поторговаться сможем?")
+        q.append("а где машину посмотреть можно?")
+        q.append("какие у нее датали со шпаклей крашены?")
+
+        sender = await event.get_sender()
+        messages = client.iter_messages(sender.id)
+        me = await client.get_me()
+        incoming_count = 0
+        async for message in messages:
+
+            if message.sender_id != me.id:
+                print(f"{sender.id} -> {me.id}: {message.text}")
+                incoming_count += 1
+
+
+        await asyncio.sleep(3)
+        #incoming_count -=2
+        if incoming_count==1:
+            await client.send_message(sender.id, q[0])
+            print(f"{sender.id} -> {me.id}: {q[0]}")
+        if incoming_count==2:
+            await client.send_message(sender.id, q[1])
+            print(f"{sender.id} -> {me.id}: {q[1]}")
+        if incoming_count==3:
+            await client.send_message(sender.id, q[2])
+            print(f"{sender.id} -> {me.id}: {q[2]}")
+        if incoming_count==4:
+            await client.send_message(sender.id, q[3])
+            print(f"{sender.id} -> {me.id}: {q[3]}")
+
+
+        #print(f'incoming count: {incoming_count}')
+
+
+
+    me = await client.get_me()
+    await  do_something(client)
 
 
 
 
 
-
-
-
+def autorespond(client):
+    with client:
+        client.loop.run_until_complete(telegram_autorespond_handle(client))

@@ -13,6 +13,7 @@ class Phone(Base):
     tel = Column(String(15), nullable=False, unique=True)
     geo = Column(String(5), default="-")
     operator = Column(String(20), default="-")
+    telegram_id = Column(Integer, default=0)
 
     def __init__(self, tel):
         phone = '+' + str(tel)
@@ -23,6 +24,7 @@ class Phone(Base):
         self.tel = tel
         self.geo = geo
         self.operator = operator
+        self.telegram_id = 0
 
     def __repr__(self):
         return f'Tel_id: {self.phone_id}; Tel: {self.tel}; Geo: {self.geo}; Operator: {self.operator}'
