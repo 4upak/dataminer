@@ -129,7 +129,7 @@ def update_account_id(me,account):
 
 async def do_something(client):
     #await client.send_message('@goldjgold', 'Привет')
-    res = session.query(Autoria_item,Phone,Car).filter(Autoria_item.tel_id == Phone.phone_id).filter(Autoria_item.car_id == Car.car_id).filter(Autoria_item.sold == 0).offset(40).limit(100000).all()
+    res = session.query(Autoria_item,Phone,Car).filter(Autoria_item.tel_id == Phone.phone_id).filter(Autoria_item.car_id == Car.car_id).filter(Autoria_item.sold == 0).offset(700).limit(100000).all()
 
     me = await client.get_me()
     for row in res:
@@ -137,19 +137,16 @@ async def do_something(client):
         try:
 
             #contact = await client.get_entity()
-
+            print(f"Checking {row[1].tel}")
             contact = InputPhoneContact(client_id=0, phone=row[1].tel, first_name="", last_name="")
             result = await client(ImportContactsRequest([contact]))
-
             result = result.to_dict()
             reciepient_id = result['imported'][0]['user_id']
             phone = Phone(row[1].tel)
             phone.phone_id = row[1].phone_id
             phone.telegram_id = reciepient_id
-
             session.query(Phone).filter(Phone.phone_id == row[1].phone_id).update({'telegram_id': reciepient_id})
             session.commit()
-
             if row[0].person_name != '-':
                 message = f"{row[0].person_name}, добрый день!"
             else:
@@ -161,17 +158,28 @@ async def do_something(client):
             await asyncio.sleep(2)
             await client.send_message(reciepient_id, message)
             print(f"{me.id} -> {reciepient_id}: {message}")
-            await asyncio.sleep(300)
-
-
-
+            await asyncio.sleep(120)
 
         except Exception as ex:
+            print(result)
             print(f'[{ex}]{row[1].tel} has no telegram account')
+            await client.send_message('@SpamBot', '/start')
+
+            f = open("noaccount.txt", 'w+')
+            f.write(f"{row[1].tel}\n")
+            f.close()
             await asyncio.sleep(10)
 
 
-        await asyncio.sleep(300)
+
+
+
+
+
+
+
+
+
         me = await client.get_me()
         #print(vars(client))
 
@@ -184,32 +192,50 @@ async def telegram_autorespond_handle(client):
         q.append("Поторговаться сможем?")
         q.append("а где машину посмотреть можно?")
         q.append("какие у нее датали со шпаклей крашены?")
+        q.append("А вы не в курсе, без вакцинации пускают в Мрео cейчас?")
+        q.append("Сын бот скинул @mreo_pass_ua_bot, генерирует любые ПцР тесты, если шо, прорвемся")
+        q.append("Завтра наберу по просмотру машины вас")
+
 
         sender = await event.get_sender()
         messages = client.iter_messages(sender.id)
         me = await client.get_me()
         incoming_count = 0
+        print(f"{sender.id} -> {me.id}: {event.raw_text}")
+
+
+
+        lines = []
         async for message in messages:
 
-            if message.sender_id != me.id:
-                print(f"{sender.id} -> {me.id}: {message.text}")
+            lines.append(f"{sender.id} -> {me.id}: {message.text}")
+            if message.sender_id == me.id:
                 incoming_count += 1
 
+        f = open(f"dialogs/{me.id}_{sender.id}.txt", 'w+')
+        f.seek(0)
+        for line in lines:
+            f.write(f"{line}\n")
+        f.truncate()
+        f.close()
 
-        await asyncio.sleep(3)
-        #incoming_count -=2
-        if incoming_count==1:
-            await client.send_message(sender.id, q[0])
-            print(f"{sender.id} -> {me.id}: {q[0]}")
-        if incoming_count==2:
-            await client.send_message(sender.id, q[1])
-            print(f"{sender.id} -> {me.id}: {q[1]}")
-        if incoming_count==3:
-            await client.send_message(sender.id, q[2])
-            print(f"{sender.id} -> {me.id}: {q[2]}")
-        if incoming_count==4:
-            await client.send_message(sender.id, q[3])
-            print(f"{sender.id} -> {me.id}: {q[3]}")
+        async def send_q_message(incoming_count, messages, sender_id):
+            if incoming_count>=1 and incoming_count <= 7 and sender_id != 178220800:
+                incoming_count -= 1
+                flag = 0
+                async for message in messages:
+                    if message.text.strip() == q[incoming_count].strip():
+                        flag += 1
+                if flag == 0:
+                    await asyncio.sleep(5)
+                    await client.send_message(sender_id, q[incoming_count])
+                    print(f"{me.id} -> {sender_id}: {q[incoming_count]}")
+
+
+        await  send_q_message(incoming_count, messages, sender.id)
+
+
+
 
 
         #print(f'incoming count: {incoming_count}')
@@ -217,6 +243,7 @@ async def telegram_autorespond_handle(client):
 
 
     me = await client.get_me()
+    print(me.stringify())
     await  do_something(client)
 
 

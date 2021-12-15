@@ -39,7 +39,7 @@ def main(argumentList):
                     from ftelethon import get_account_from_db, get_client,update_account_id,create_telegram_accounts_in_db, autorespond
                     create_telegram_accounts_in_db()
                     account_from_db = get_account_from_db()
-                    account = account_from_db[0]
+                    account = account_from_db[6]
                     client = get_client(account)
                     me = client.get_me()
 
