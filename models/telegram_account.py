@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger
 from sqlalchemy.ext.declarative import declarative_base
 from database import Base
 
@@ -28,6 +28,8 @@ class Telegram_account(Base):
     password_str = Column(String(250), nullable=False,default="-")
     avatar = Column(String(250), default="-")
     username = Column(String(250), nullable=True, default='-')
+    work = Column(Integer, default="0")
+    restricted = Column(Integer, default="0")
 
 
 
@@ -45,6 +47,9 @@ class Telegram_account(Base):
         self.lang_pack = data['lang_pack']
         self.success_registred = data['success_registred']
         self.proxy = data['proxy']
+        self.work = 0
+        self.restricted = 0
+
 
         if 'register_process' in data:
             self.register_process = data['register_process']
@@ -62,7 +67,9 @@ class Telegram_account(Base):
 
 
         self.avatar = data['avatar']
-        self.username = data['username']
+        if 'username' in data:
+            self.username = data['username']
+
 
     def __repr__(self):
         return f'UserName: {self.username}'

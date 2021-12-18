@@ -23,6 +23,7 @@ class Autoria_item(Base):
     sold = Column(Integer, nullable=False, default="0")
     views = Column(Integer, nullable=False, default="0")
     saved = Column(Integer, nullable=False, default="0")
+    telegram_contact = Column(Integer, nullable=False, default="0")
 
 
     def __init__(self, item_url, item_id, tel_id, person_name, price, car_id, km, city, sold):
@@ -35,6 +36,7 @@ class Autoria_item(Base):
         self.km = km
         self.city = city
         self.sold = sold
+        self.telegram_contact = 0
 
     def __repr__(self):
         return f'item_url: {self.item_url};' \

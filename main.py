@@ -1,6 +1,8 @@
 import sys
 import getopt
 from fglobal import check_proxy, read_proxy
+import time
+
 
 def update_proxy_list():
     print('Checking proxies')
@@ -22,8 +24,13 @@ def main(argumentList):
                     get_all_base()
 
                 elif currentValue == "test":
-                    from fglobal import read_proxy
-                    check_proxy()
+                    from database import Base, session, engine
+                    from models.autoria_item import Autoria_item, Phone, Car
+                    from models.telegram_account import Telegram_account
+                    acc = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == 2046141639).first()
+
+                    print(acc.restricted)
+
 
                 elif currentValue == "update":
                     from autoria import update_base
@@ -36,17 +43,31 @@ def main(argumentList):
                     check_proxy()
 
                 elif currentValue == "telegram":
-                    from ftelethon import get_account_from_db, get_client,update_account_id,create_telegram_accounts_in_db, autorespond
+                    from ftelethon import get_account_from_db, get_client,update_account_id,create_telegram_accounts_in_db, autorespond, leave_all_chats
                     create_telegram_accounts_in_db()
                     account_from_db = get_account_from_db()
-                    account = account_from_db[6]
+
+                    account = account_from_db
                     client = get_client(account)
+                    leave_all_chats(client)
                     me = client.get_me()
 
                     update_account_id(me,account)
 
                     autorespond(client)
 
+                elif currentValue == "accounts":
+                    from ftelethon import get_account_from_db, get_client, update_account_id, create_telegram_accounts_in_db, autorespond, leave_all_chats
+
+                elif currentValue == "create_base":
+                    from models.autoria_item import Autoria_item
+                    from models.phone import Phone
+                    from models.car import Car
+                    from models.dialog import Telegram_dialog
+                    from models.proxy import Proxy
+                    from models.telegram_account import Telegram_account
+                    from database import Base, session, engine
+                    Base.metadata.create_all(engine)
 
 
 
