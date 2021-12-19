@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, BigInteger
+from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Text
 from sqlalchemy.ext.declarative import declarative_base
 from database import Base
 import time
@@ -9,7 +9,7 @@ class Telegram_dialog(Base):
     dialog_id = Column(Integer, primary_key=True,unique=True)
     sender_id = Column(BigInteger, nullable=False)
     recipient_id = Column(BigInteger, nullable=False)
-    message_text = Column(String(255), default = "-")
+    message_text = Column(Text, default = "-")
     message_time = Column(Integer, nullable=False)
 
     def __init__(self,sender_id, recipient_id, message_text):

@@ -24,12 +24,11 @@ def main(argumentList):
                     get_all_base()
 
                 elif currentValue == "test":
-                    from database import Base, session, engine
-                    from models.autoria_item import Autoria_item, Phone, Car
-                    from models.telegram_account import Telegram_account
-                    acc = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == 2046141639).first()
+                    from datetime import datetime
+                    current_time = datetime.now().time()
 
-                    print(acc.restricted)
+                    print(str(current_time).split(":")[0])
+
 
 
                 elif currentValue == "update":

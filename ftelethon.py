@@ -21,6 +21,7 @@ import time
 from models.autoria_item import Autoria_item
 from models.phone import Phone
 from models.dialog import Telegram_dialog
+import random
 
 from database import Base,session,engine
 
@@ -143,12 +144,22 @@ def update_account_id(me,account):
 async def do_something(client,me):
     #await client.send_message('@goldjgold', 'Привет')
 
-    global_count = 2000
+    global_count = random.randint(0, 100000)
     while True:
+
+        while True:
+            current_time = datetime.now().time()
+            hour = int(str(current_time).split(":")[0])
+            if hour >= 22 or hour <= 8:
+                print("Время не летное, засыпаем на час")
+                await asyncio.sleep(3600)
+
+
+
+
         global_count += 1
         res = session.query(Autoria_item, Phone, Car).filter(Autoria_item.tel_id == Phone.phone_id).filter(
-            Autoria_item.car_id == Car.car_id).filter(Autoria_item.sold == 0).filter(
-            Autoria_item.city == 'Київ').filter(Autoria_item.telegram_contact == 0).offset(global_count).limit(1).all()
+            Autoria_item.car_id == Car.car_id).filter(Autoria_item.sold == 0).filter(Autoria_item.telegram_contact == 0).offset(global_count).limit(1).all()
 
         timestamp = int(time.time())
         row = res[0]
@@ -208,20 +219,16 @@ async def do_something(client,me):
             break
 
 
-def get_q():
-    q = []
-    q.append("Какая актуальная цена?")
-    q.append("Поторговаться сможем?")
-    q.append("а где машину посмотреть можно?")
-    q.append("какие у нее датали со шпаклей крашены?")
-    q.append("А вы не в курсе, без вакцинации пускают в Мрео cейчас?")
-    # q.append("Мне тут скинули телеграм бот - @mreo_pass_ua_bot, генерирует любые ПцР тесты, если шо, прорвемся")
-    q.append("Завтра наберу по просмотру машины вас")
-    return q
+
 
 #def iter_dialog(contact_id):
 #    res = session.query(Telegram_dialog).filter(((Telegram_dialog.sender_id == contact_id)) | (Telegram_dialog.recipient_id==contact_id)) & ((Telegram_dialog.recipient_idsender_id == contact_id)) | (Telegram_dialog.sender_id ==contact_id))).all()
 #    return res
+
+
+
+
+
 
 async def telegram_autorespond_handle(client):
     @client.on(events.NewMessage)
@@ -230,10 +237,24 @@ async def telegram_autorespond_handle(client):
 
         sender = await event.get_sender()
 
-        dialog = Telegram_dialog(sender.id, me.id, event.raw_text)
-        session.add(dialog)
-        session.commit()
+        if sender.id != 178220800:
+            dialog = Telegram_dialog(sender.id, me.id, event.raw_text)
+            session.add(dialog)
+            session.commit()
 
+        q = []
+        q.append("Что у машины по кузаву? На стойках и порогах есть шпаклевка")
+        q.append("Какая акутуальная цена")
+        q.append("Поторговаться сможем?")
+        q.append("Где машину посмотерть можно?")
+        q.append("А вы не в курсе, без вакцинации пускают в Мрео cейчас?")
+        q.append("Завтра наберу по просмотру?")
+
+
+        async def get_incoming_count(sender_id, reciepient_id):
+            res = session.query(Telegram_dialog).filter(Telegram_dialog.sender_id == sender_id).filter(
+                Telegram_dialog.recipient_id == reciepient_id).all()
+            return len(res)
 
         async def check_account_ban(event):
             print("Спамбот прислал ответ")
@@ -243,56 +264,32 @@ async def telegram_autorespond_handle(client):
             else:
                 print("Все ок, продолжаем")
 
-        q = get_q()
 
-        incoming_count = 0
+
+        incoming_count = await get_incoming_count(me.id, sender.id)
+        incoming_count = int(incoming_count)
         if sender.id != 178220800:
-            messages = client.iter_messages(sender.id)
-
             print(f"{sender.id} -> {me.id}: {event.raw_text}")
-            lines = []
-            async for message in messages:
-                lines.append(f"{sender.id} -> {me.id}: {message.text}")
-                if message.sender_id == me.id:
-                    incoming_count += 1
-
-            f = open(f"dialogs/{me.id}_{sender.id}.txt", 'w+')
-            f.seek(0)
-            for line in lines:
-                f.write(f"{line}\n")
-            f.truncate()
-            f.close()
         else:
             await check_account_ban(event)
 
 
-        async def send_q_message(incoming_count, messages, sender_id):
-            messages = client.iter_messages(sender_id)
+        async def send_q_message(incoming_count, sender_id):
+
             if incoming_count>=1 and incoming_count <= len(q)+1 and sender_id != 178220800:
                 incoming_count -= 1
-                flag = 0
-                async for message in messages:
-                    if message.text.strip() == q[incoming_count].strip():
-                        print("Повтор увидели")
-                        flag += 1
-                if flag == 0:
-                    dialog = Telegram_dialog(me.id, sender_id, q[incoming_count])
-                    session.add(dialog)
-                    session.commit()
-                    await asyncio.sleep(5)
-                    await client.send_message(sender_id, q[incoming_count])
 
-                    print(f"{me.id} -> {sender_id}: {q[incoming_count]}")
+                dialog = Telegram_dialog(me.id, sender_id, q[incoming_count])
+                session.add(dialog)
+                session.commit()
+                await asyncio.sleep(10)
+                await client.send_message(sender_id, q[incoming_count])
 
-
+                print(f"{me.id} -> {sender_id}: {q[incoming_count]}")
 
 
         if incoming_count <= len(q)+1 and incoming_count>0:
-            await send_q_message(incoming_count, messages, sender.id)
-
-
-        #print(f'incoming count: {incoming_count}')
-
+            await send_q_message(incoming_count, sender.id)
 
 
     me = await client.get_me()
