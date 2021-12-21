@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, Boolean, BigInteger, Text
 from sqlalchemy.ext.declarative import declarative_base
 from database import Base
 import time
+import re
 
 class Telegram_dialog(Base):
     __tablename__ = 'dataminer_telegram_dialog'
@@ -15,7 +16,7 @@ class Telegram_dialog(Base):
     def __init__(self,sender_id, recipient_id, message_text):
         self.sender_id = sender_id
         self.recipient_id = recipient_id
-        self.message_text = message_text
+        self.message_text = re.sub('[^A-Za-z0-9\s]+', '', message_text)
         self.message_time = int(time.time())
 
     def __repr__(self):

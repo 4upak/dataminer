@@ -14,6 +14,7 @@ class Phone(Base):
     geo = Column(String(5), default="-")
     operator = Column(String(20), default="-")
     telegram_id = Column(Integer, default=0)
+    telegram_checked = Column(Integer, default=0)
 
     def __init__(self, tel):
         phone = '+' + str(tel)

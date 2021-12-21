@@ -4,6 +4,7 @@ from fglobal import check_proxy, read_proxy
 import time
 
 
+
 def update_proxy_list():
     print('Checking proxies')
     check_proxy()
@@ -24,10 +25,19 @@ def main(argumentList):
                     get_all_base()
 
                 elif currentValue == "test":
+                    from database import Base, session, engine
                     from datetime import datetime
-                    current_time = datetime.now().time()
+                    from models.autoria_item import Autoria_item
+                    from models.phone import Phone
+                    from models.car import Car
+                    from models.dialog import Telegram_dialog
+                    from models.proxy import Proxy
+                    import random
+                    import re
+                    rows = session.query(Phone.tel).filter(Phone.telegram_checked==0).limit(100)
 
-                    print(str(current_time).split(":")[0])
+                    for row in rows:
+                        print(row.tel)
 
 
 
