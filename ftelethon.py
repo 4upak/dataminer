@@ -4,6 +4,8 @@ from models.autoria_item import Autoria_item, Phone, Car
 from models.telegram_account import Telegram_account
 from telethon import TelegramClient, sync
 from models.proxy import Proxy
+from models.task import Task
+from models.telegram_account_groups import Telegram_account_groups
 from telethon import events
 from telethon import functions, types
 from telethon.tl.functions.messages import GetDialogsRequest
@@ -26,6 +28,12 @@ import time
 from datetime import datetime
 
 from database import Base,session,engine
+
+def get_hello_text():
+    f = open("hello.txt", "r")
+    lines = f.readlines()
+    f.close()
+    return lines[random.randrange(0, len(lines)-1)]
 
 def leave_all_chats(client):
     for dialog in client.iter_dialogs():
@@ -154,7 +162,7 @@ def check_work_time():
         else:
             break
 
-async def do_something(client,me):
+async def autorespond_controller(client,me):
 
 
     offset = random.randint(0, 100000)
@@ -177,8 +185,6 @@ async def do_something(client,me):
         session.query(Autoria_item).filter(Autoria_item.item_id == row[1].item_id).update(
             {'telegram_contact': timestamp})
         session.commit()
-
-
         try:
 
             #contact = await client.get_entity()
@@ -208,7 +214,7 @@ async def do_something(client,me):
 
         except Exception as ex:
             wrong_phone_count += 1
-            print(f'[{ex}]{row[0].tel} has no telegram account')
+            print(f'[{wrong_phone_count}][{ex}]{row[0].tel} has no telegram account')
             session.query(Phone).filter(Phone.phone_id == row[0].phone_id).update({'telegram_checked': 1})
             session.commit()
 
@@ -226,7 +232,7 @@ async def do_something(client,me):
             await asyncio.sleep(3600)
             break
 
-async def telegram_autorespond_handle(client):
+async def autorespond_handle(client):
     @client.on(events.NewMessage)
     async def my_event_handler(event):
         sender = await event.get_sender()
@@ -256,35 +262,165 @@ async def telegram_autorespond_handle(client):
                     print(f"{me.id} -> {sender_id}: {q[incoming_count]}")
                 except Exception as ex:
                     print(ex)
+        if int(session.query(Phone).filter(Phone.telegram_id == sender.id).count()) > 0:
+            incoming_count = await get_incoming_count(me.id, sender.id)
+            incoming_count = int(incoming_count)
 
-        incoming_count = await get_incoming_count(me.id, sender.id)
-        incoming_count = int(incoming_count)
-
-        q = []
-        q.append("Что у машины по кузаву? На стойках и порогах есть шпаклевка")
-        q.append("Какая акутуальная цена")
-        q.append("Поторговаться сможем?")
-        q.append("Где машину посмотерть можно?")
-        q.append("А вы не в курсе, без вакцинации пускают в Мрео cейчас?")
-        q.append("Завтра наберу по просмотру?")
-
-
-        if sender.id != 178220800 and incoming_count>0:
-            print(f"{sender.id} -> {me.id}: {event.raw_text}")
-            dialog = Telegram_dialog(sender.id, me.id, event.raw_text)
-            session.add(dialog)
-            session.commit()
-        else:
-            await check_account_ban(event)
+            q = []
+            q.append("Что у машины по кузаву? На стойках и порогах есть шпаклевка")
+            q.append("Какая акутуальная цена")
+            q.append("Поторговаться сможем?")
+            q.append("Где машину посмотерть можно?")
+            q.append("А вы не в курсе, без вакцинации пускают в Мрео cейчас?")
+            q.append("Завтра наберу по просмотру?")
 
 
-        if incoming_count <= len(q)+1 and incoming_count>0:
-            await send_q_message(incoming_count, sender.id)
+            if sender.id != 178220800 and incoming_count>0:
+                print(f"{sender.id} -> {me.id}: {event.raw_text}")
+                dialog = Telegram_dialog(sender.id, me.id, event.raw_text)
+                session.add(dialog)
+                session.commit()
+            else:
+                await check_account_ban(event)
+
+
+            if incoming_count <= len(q)+1 and incoming_count>0:
+                await send_q_message(incoming_count, sender.id)
 
     me = await client.get_me()
     print(me.stringify())
-    await  do_something(client, me)
+    await  autorespond_controller(client, me)
 
 def autorespond(client):
     with client:
-        client.loop.run_until_complete(telegram_autorespond_handle(client))
+        client.loop.run_until_complete(autorespond_handle(client))
+#################################################################################################
+#################################################################################################
+#################################################################################################
+
+def save_dialog(sender_id, receipient_id, text):
+    try:
+        dialog = Telegram_dialog(sender_id, receipient_id, text)
+        session.add(dialog)
+        session.commit()
+        return True
+    except Exception as ex:
+        print(ex)
+        return False
+
+async def join_chat(telegram_id, chat_id,client):
+    from telethon.tl.functions.channels import JoinChannelRequest
+    try:
+        chat_invited = session.query(Telegram_account_groups).filter(Telegram_account_groups.telegram_id == me.id).count()
+        if chat_invited == 0:
+            await client(JoinChannelRequest(chat_id))
+            account_chat_mixin = Telegram_account_groups(telegram_id, chat_id)
+            session.add(account_chat_mixin)
+            session.commit()
+        return True
+
+    except Exception as ex:
+        print(ex)
+        return False
+
+async def warming_up_controller(client,me):
+    session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update({'action': 'warmin_up', 'work': 2})
+    session.commit()
+    count = 0
+    tasks = session.query(Task).filter(Task.sender_id == me.username).filter(Task.done == 0).all()
+    print(f"Tasl len:{len(tasks)}")
+    invite_count = 0
+    while True:
+        count +=1
+        print(f'iteration:{count} for {int(me.id)}')
+        tasks = session.query(Task).filter((Task.sender_id == me.username) | (Task.sender_id == 'all')).all()
+        session.commit()
+        print(f"Tasl len:{len(tasks)}")
+
+        for task in tasks:
+            if task.type == 'send_message':
+                try:
+                    time.sleep(task.delay_before)
+                    await client.send_message(task.receipient_id, task.data)
+                    time.sleep(task.delay_after)
+                    session.query(Task).filter(Task.task_id == task.task_id).delete()
+                    save_dialog(me.id, task.receipient_id, task.data)
+                    print(f"{me.id}->{task.receipient_id} {task.data}")
+                except Exception as ex:
+                    print(ex)
+
+            if task.type == 'join_chat':
+                try:
+                    print(f"Try to join chat {task.receipient_id}")
+                    from telethon.tl.functions.channels import JoinChannelRequest
+                    time.sleep(task.delay_before)
+                    join_chat(me.id, task.receipient_id, client)
+
+                    print(f"{me.id} joined {task.receipient_id}")
+                    time.sleep(task.delay_after)
+                    session.query(Task).filter(Task.task_id == task.task_id).delete()
+                    session.commit()
+                except Exception as ex:
+                    print(ex)
+
+            if task.type == 'invite_to_chat' and invite_count<=20:
+                try:
+                    print(f'{me.id} Try to invite {task.receipient_id} to {task.data}')
+                    from telethon.sync import TelegramClient
+                    from telethon import functions, types
+
+                    await join_chat(me.id, task.data, client)
+                    time.sleep(task.delay_before)
+
+                    user_entity = await client.get_entity(task.receipient_id)
+                    target_group_entity = await client.get_entity(task.data)
+
+                    result = await client(functions.channels.InviteToChannelRequest(
+                        channel= target_group_entity,
+                        users= [user_entity]
+                    ))
+                    time.sleep(task.delay_after)
+                    session.query(Task).filter(Task.task_id == task.task_id).delete()
+                    session.commit()
+                    invite_count+=1
+                    if invite_count <= 20:
+                        break
+                except Exception as ex:
+                    print(ex)
+                    time.sleep(task.delay_after)
+                    session.query(Task).filter(Task.task_id == task.task_id).delete()
+                    session.commit()
+
+
+        await asyncio.sleep(20)
+        acc = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).first()
+        session.commit()
+        print(acc)
+        print(f"Acc Restricted:{acc.restricted}")
+        if acc.restricted == 1:
+            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                {'action': '-', 'work': 0})
+            break
+        if invite_count <= 20:
+            break
+
+async def warming_up_handle(client):
+    @client.on(events.NewMessage)
+    async def my_event_handler(event):
+        sender = await event.get_sender()
+        count = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == sender.id).count()
+        if count > 0:
+            print(f"{sender.id} -> {me.id}: {event.raw_text}")
+            save_dialog(sender.id, me.id, event.raw_text)
+
+    await asyncio.sleep(20)
+    client.start()
+
+    me = await client.get_me()
+    print(me.stringify())
+    await warming_up_controller(client,me)
+
+
+def warming_up(client):
+    with client:
+        client.loop.run_until_complete(warming_up_handle(client))

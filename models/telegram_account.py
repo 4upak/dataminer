@@ -20,7 +20,7 @@ class Telegram_account(Base):
     success_registred = Column(Boolean, unique=False, default=True)
     proxy = Column(String(250), nullable=False, default="-")
     register_process = Column(Boolean, unique=False, default=False)
-    first_name=Column(String(15), nullable=False, default="-")
+    first_name=Column(String(250), nullable=False, default="-")
     last_name=Column(String(15), nullable=False, default="-")
     last_check_time=Column(Integer, nullable=False, default="0")
     deleted = Column(Boolean, unique=False, default=False)
@@ -30,6 +30,7 @@ class Telegram_account(Base):
     username = Column(String(250), nullable=True, default='-')
     work = Column(Integer, default="0")
     restricted = Column(Integer, default="0")
+    action = Column(String(250), nullable=False, default="-")
 
 
 
@@ -54,9 +55,12 @@ class Telegram_account(Base):
         if 'register_process' in data:
             self.register_process = data['register_process']
 
-        self.first_name = data['first_name']
-        self.last_name = data['last_name']
-        self.last_check_time = data['last_check_time']
+        if 'first_name' in data:
+            self.first_name = data['first_name']
+        if 'last_name' in data:
+            self.last_name = data['last_name']
+        if 'last_check_time' in data:
+            self.last_check_time = data['last_check_time']
 
         if 'deleted' in data:
             self.deleted = data['deleted']
@@ -65,11 +69,12 @@ class Telegram_account(Base):
         if 'password_str' in data:
             self.password_str = data['password_str']
 
+        if 'avatar' in data:
+            self.avatar = data['avatar']
 
-        self.avatar = data['avatar']
         if 'username' in data:
             self.username = data['username']
 
 
     def __repr__(self):
-        return f'UserName: {self.username}'
+        return f'UserName: {self.username}; Restricted:{self.restricted}'
