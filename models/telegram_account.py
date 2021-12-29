@@ -77,4 +77,4 @@ class Telegram_account(Base):
 
 
     def __repr__(self):
-        return f'UserName: {self.username}; Restricted:{self.restricted}'
+        return f'UserName: {self.username}; Restricted:{self.restricted}; Proxy: {self.proxy};'

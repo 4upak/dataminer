@@ -26,7 +26,6 @@ from models.dialog import Telegram_dialog
 import random
 import time
 from datetime import datetime
-
 from database import Base,session,engine
 
 def get_hello_text():
@@ -35,13 +34,22 @@ def get_hello_text():
     f.close()
     return lines[random.randrange(0, len(lines)-1)]
 
-def leave_all_chats(client):
-    for dialog in client.iter_dialogs():
+async def leave_all_chats(client,me):
+    try:
+        rows = session.query(Telegram_account_groups).filter(Telegram_account_groups.telegram_id == me.id).all()
+        if len(rows) >0:
+            for row in rows:
+                entity = await client.get_entity(row.chat_id)
+                await asyncio.sleep(60)
+                await client.delete_dialog(entity.id)
+                print(f'Deleting {entity.id}')
 
-        entity = client.get_entity(dialog.entity)
-        if isinstance(entity, Chat):
-            client.delete_dialog(entity.id)
-            print(f'Deleting {entity.id}')
+        session.query(Telegram_account_groups).filter(Telegram_account_groups.telegram_id == me.id).delete()
+        session.commit()
+        return True
+    except Exception as ex:
+        print(ex)
+        return False
 
 def get_account_info(account):
     try:
@@ -92,7 +100,7 @@ def create_telegram_accounts_in_db():
 
 def get_account_from_db():
     try:
-        result =  session.query(Telegram_account).filter(Telegram_account.deleted==0).filter(Telegram_account.work==0).first()
+        result =  session.query(Telegram_account).filter(Telegram_account.deleted==0).filter(Telegram_account.work==0).filter(Telegram_account.restricted==0).first()
         session.query(Telegram_account).filter(Telegram_account.telegram_id == result.telegram_id).update({'work': 2})
         session.commit()
 
@@ -106,24 +114,22 @@ def get_account_from_db():
 def get_client(account):
 
     from fglobal import get_one_proxy
+    proxy = '-'
+    if account.proxy != '-':
+        count = session.query(Proxy).filter(Proxy.host == account.proxy).count()
 
-    if account.proxy!='-':
-        proxy = session.query(Proxy).filter(Proxy.host == account.proxy).first()
-        if isinstance(proxy,Proxy):
-            pass
-        else:
+        if count == 0:
+            print("Proxy expired")
             proxy = get_one_proxy()
-            account.proxy = proxy.host
-            session.add(account)
+            session.query(Telegram_account).filter(Telegram_account.telegram_id == account.telegram_id).update({'proxy': proxy.host})
             session.commit()
-    else:
+    if account.proxy == '-':
         proxy = get_one_proxy()
         account.proxy = proxy.host
         session.add(account)
         session.commit()
 
-
-    print(vars(proxy))
+    print(f"Starting using {proxy.host}")
     if  proxy.port == 45786:
         proxy.port = 45785
     client = TelegramClient(f"taccounts/{account.session_file}", api_id=account.app_id, api_hash=account.app_hash,
@@ -311,9 +317,10 @@ def save_dialog(sender_id, receipient_id, text):
 async def join_chat(telegram_id, chat_id,client):
     from telethon.tl.functions.channels import JoinChannelRequest
     try:
-        chat_invited = session.query(Telegram_account_groups).filter(Telegram_account_groups.telegram_id == me.id).count()
+        chat_invited = session.query(Telegram_account_groups).filter(Telegram_account_groups.telegram_id == telegram_id).filter(Telegram_account_groups.chat_id == chat_id).count()
         if chat_invited == 0:
             await client(JoinChannelRequest(chat_id))
+            print(f"{telegram_id} вступил в {chat_id}")
             account_chat_mixin = Telegram_account_groups(telegram_id, chat_id)
             session.add(account_chat_mixin)
             session.commit()
@@ -333,11 +340,11 @@ async def warming_up_controller(client,me):
     while True:
         count +=1
         print(f'iteration:{count} for {int(me.id)}')
-        tasks = session.query(Task).filter((Task.sender_id == me.username) | (Task.sender_id == 'all')).all()
-        session.commit()
-        print(f"Tasl len:{len(tasks)}")
-
-        for task in tasks:
+        task_count = session.query(Task).filter((Task.sender_id == me.username) | (Task.sender_id == 'all')).count()
+        if task_count > 0:
+            print(f'Есть {task_count} задания, приступаем к выполнению')
+            task = session.query(Task).filter((Task.sender_id == me.username) | (Task.sender_id == 'all')).first()
+            session.commit()
             if task.type == 'send_message':
                 try:
                     time.sleep(task.delay_before)
@@ -363,14 +370,16 @@ async def warming_up_controller(client,me):
                 except Exception as ex:
                     print(ex)
 
-            if task.type == 'invite_to_chat' and invite_count<=20:
+            if task.type == 'invite_to_chat':
                 try:
-                    print(f'{me.id} Try to invite {task.receipient_id} to {task.data}')
+                    print(f'[{invite_count}]{me.id} Try to invite {task.receipient_id} to {task.data}')
                     from telethon.sync import TelegramClient
                     from telethon import functions, types
+                    session.query(Task).filter(Task.task_id == task.task_id).delete()
+                    session.commit()
 
                     await join_chat(me.id, task.data, client)
-                    time.sleep(task.delay_before)
+                    await asyncio.sleep(task.delay_before)
 
                     user_entity = await client.get_entity(task.receipient_id)
                     target_group_entity = await client.get_entity(task.data)
@@ -379,29 +388,52 @@ async def warming_up_controller(client,me):
                         channel= target_group_entity,
                         users= [user_entity]
                     ))
-                    time.sleep(task.delay_after)
-                    session.query(Task).filter(Task.task_id == task.task_id).delete()
-                    session.commit()
+                    await asyncio.sleep(task.delay_after)
+
                     invite_count+=1
-                    if invite_count <= 20:
-                        break
+                    print(f'{task.receipient_id} добавлен в  {task.data}')
+
                 except Exception as ex:
                     print(ex)
-                    time.sleep(task.delay_after)
+                    if re.search('Too many requests', str(ex)) or re.search("banned from sending messages", str(ex)):
+                        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                            {'restricted': 1})
+                        session.commit()
+                    if re.search("deleted/deactivated", str(ex)):
+                        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                        {'deleted': 1})
+                        session.commit()
+                    await asyncio.sleep(task.delay_after)
                     session.query(Task).filter(Task.task_id == task.task_id).delete()
                     session.commit()
 
 
-        await asyncio.sleep(20)
+        time.sleep(2)
         acc = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).first()
         session.commit()
-        print(acc)
-        print(f"Acc Restricted:{acc.restricted}")
+
         if acc.restricted == 1:
+            print('account restricted, breacking')
+            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                {'action': '-'})
+            print(f'Proxy {acc.proxy} deleted')
+            session.query(Proxy).filter(Proxy.host == acc.proxy).delete()
+            session.commit()
+            await leave_all_chats(client, me)
+            break
+
+        if acc.deleted == 1:
+            print('account deleted, breacking')
             session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
                 {'action': '-', 'work': 0})
+            print(f'Proxy {acc.proxy} deleted')
+            session.query(Proxy).filter(Proxy.host == acc.proxy).delete()
+            session.commit()
             break
-        if invite_count <= 20:
+
+        if invite_count >= 10:
+            print('invite_count limit exeded, breaking')
+            await leave_all_chats(client, me)
             break
 
 async def warming_up_handle(client):
@@ -424,3 +456,12 @@ async def warming_up_handle(client):
 def warming_up(client):
     with client:
         client.loop.run_until_complete(warming_up_handle(client))
+    while True:
+        account_from_db = get_account_from_db()
+        account = account_from_db
+        print(account)
+        client = get_client(account)
+        me = client.get_me()
+        update_account_id(me, account)
+        with client:
+            client.loop.run_until_complete(warming_up_handle(client))

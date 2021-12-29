@@ -20,6 +20,7 @@ def checking_proxy(proxy):
 def check_proxy():
     f = open("proxy.txt", "r+")
     lines = f.readlines()
+    print(lines)
     f.close()
     proxy_list = []
     for line in lines:
@@ -53,12 +54,36 @@ def read_proxy():
     proxy_list = session.query(Proxy).all()
     return proxy_list
 
+def recheck_proxy(proxy):
+    import requests
+    result = False
+    print("Rechecking proxy")
+    if proxy.type == 'socks5':
+        try:
+            requests.get('https://google.com', proxies=dict(
+                https=f'{proxy.type}://{proxy.login}:{proxy.password}@{proxy.host}:{proxy.port}',
+                http=f'{proxy.type}://{proxy.login}:{proxy.password}@{proxy.host}:{proxy.port}'
+            ), verify=True, timeout=30)
+            print("Proxy works")
+            result = True
+        except Exception as ex:
+            print("Proxy fail")
+            result = False
+    return result
+
 def get_one_proxy():
 
     proxies = read_proxy()
     if len(proxies)>0:
-        proxy = proxies[random.randint(0, len(proxies) - 1)]
-        return proxy
+        proxy_check_result = False
+        while proxy_check_result == False:
+            current_proxy = proxies[random.randint(0, len(proxies) - 1)]
+            print(f"Rechecking {current_proxy.host}")
+            proxy_check_result = recheck_proxy(current_proxy)
+            print(proxy_check_result)
+        return current_proxy
+
+
     else:
         return False
 

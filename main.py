@@ -150,6 +150,9 @@ def main(argumentList):
                     from ftelethon import get_account_from_db, get_client, update_account_id, \
                         create_telegram_accounts_in_db, warming_up, leave_all_chats
                     create_telegram_accounts_in_db()
+                    account_count = 1
+                    print(f"Account count{account_count}")
+
                     account_from_db = get_account_from_db()
                     account = account_from_db
                     print(account)
@@ -193,17 +196,13 @@ def main(argumentList):
                     lines = f.readlines()
                     f.close()
                     active_account_username = 'all'
-                    chat_to_invite = 'wind_wind_wind'
-                    task = Task('join_chat', active_account_username, '@wind_wind_wind', '-')
-                    task.delay_bofore = 10
-                    task.delay_after = 15
-                    session.add(task)
-                    session.commit()
+                    chat_to_invite_list = ['jonny_jonn','uppp_uppp','aggattt']
 
                     count = 0
                     for line in lines:
                         count += 1
                         username_to_invite = line.strip()
+                        chat_to_invite = chat_to_invite_list[random.randrange(0, len(chat_to_invite_list) - 1)]
                         task = Task('invite_to_chat', active_account_username, username_to_invite, chat_to_invite)
                         task.delay_bofore = 20
                         task.delay_after = 30

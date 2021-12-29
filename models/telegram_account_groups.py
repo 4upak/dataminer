@@ -7,7 +7,7 @@ class Telegram_account_groups(Base):
     __tablename__ = 'dataminer_telegram_account_groups'
     id = Column(Integer, primary_key=True)
     telegram_id = Column(BigInteger, nullable=False)
-    chat_id = Column(BigInteger, nullable=False)
+    chat_id = Column(String(250), nullable=False)
 
     def __init__(self, telegram_id, chat_id):
         self.telegram_id = telegram_id
