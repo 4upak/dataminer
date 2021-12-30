@@ -60,10 +60,13 @@ def recheck_proxy(proxy):
     print("Rechecking proxy")
     if proxy.type == 'socks5':
         try:
-            requests.get('https://google.com', proxies=dict(
+            requests.get('https://proxy-seller.ru/', proxies=dict(
                 https=f'{proxy.type}://{proxy.login}:{proxy.password}@{proxy.host}:{proxy.port}',
                 http=f'{proxy.type}://{proxy.login}:{proxy.password}@{proxy.host}:{proxy.port}'
-            ), verify=True, timeout=30)
+            ), verify=True, timeout=50)
+
+
+
             print("Proxy works")
             result = True
         except Exception as ex:

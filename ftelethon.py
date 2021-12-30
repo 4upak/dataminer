@@ -115,20 +115,23 @@ def get_client(account):
 
     from fglobal import get_one_proxy
     proxy = '-'
-    if account.proxy != '-':
-        count = session.query(Proxy).filter(Proxy.host == account.proxy).count()
-
-        if count == 0:
-            print("Proxy expired")
-            proxy = get_one_proxy()
-            session.query(Telegram_account).filter(Telegram_account.telegram_id == account.telegram_id).update({'proxy': proxy.host})
-            session.commit()
+    print("Аккаунт:")
+    print(account)
     if account.proxy == '-':
         proxy = get_one_proxy()
         account.proxy = proxy.host
         session.add(account)
         session.commit()
 
+    else:
+        count = session.query(Proxy).filter(Proxy.host == account.proxy).count()
+        if count == 0:
+            print("Proxy expired")
+            proxy = get_one_proxy()
+            session.query(Telegram_account).filter(Telegram_account.telegram_id == account.telegram_id).update({'proxy': proxy.host})
+            session.commit()
+        else:
+            proxy = session.query(Proxy).filter(Proxy.host == account.proxy).first()
     print(f"Starting using {proxy.host}")
     if  proxy.port == 45786:
         proxy.port = 45785
@@ -403,6 +406,11 @@ async def warming_up_controller(client,me):
                         session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
                         {'deleted': 1})
                         session.commit()
+
+                    if re.search("You have joined too many channels", str(ex)):
+                        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                        {'restricted': 1})
+                        session.commit()
                     await asyncio.sleep(task.delay_after)
                     session.query(Task).filter(Task.task_id == task.task_id).delete()
                     session.commit()
@@ -416,8 +424,8 @@ async def warming_up_controller(client,me):
             print('account restricted, breacking')
             session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
                 {'action': '-'})
-            print(f'Proxy {acc.proxy} deleted')
-            session.query(Proxy).filter(Proxy.host == acc.proxy).delete()
+            #print(f'Proxy {acc.proxy} deleted')
+            #session.query(Proxy).filter(Proxy.host == acc.proxy).delete()
             session.commit()
             await leave_all_chats(client, me)
             break
@@ -426,8 +434,8 @@ async def warming_up_controller(client,me):
             print('account deleted, breacking')
             session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
                 {'action': '-', 'work': 0})
-            print(f'Proxy {acc.proxy} deleted')
-            session.query(Proxy).filter(Proxy.host == acc.proxy).delete()
+            #print(f'Proxy {acc.proxy} deleted')
+            #session.query(Proxy).filter(Proxy.host == acc.proxy).delete()
             session.commit()
             break
 
@@ -449,6 +457,8 @@ async def warming_up_handle(client):
     client.start()
 
     me = await client.get_me()
+
+
     print(me.stringify())
     await warming_up_controller(client,me)
 
@@ -459,9 +469,11 @@ def warming_up(client):
     while True:
         account_from_db = get_account_from_db()
         account = account_from_db
-        print(account)
-        client = get_client(account)
-        me = client.get_me()
-        update_account_id(me, account)
-        with client:
-            client.loop.run_until_complete(warming_up_handle(client))
+        try:
+            client = get_client(account)
+            me = client.get_me()
+            update_account_id(me, account)
+            with client:
+                client.loop.run_until_complete(warming_up_handle(client))
+        except Exception as ex:
+            print(ex)

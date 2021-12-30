@@ -146,6 +146,10 @@ def main(argumentList):
                     update_account_id(me,account)
                     autorespond(client)
 
+                elif currentValue == "create_accounts":
+                    from ftelethon import get_account_from_db, get_client, update_account_id, create_telegram_accounts_in_db, warming_up, leave_all_chats
+                    create_telegram_accounts_in_db()
+
                 elif currentValue == "warming":
                     from ftelethon import get_account_from_db, get_client, update_account_id, \
                         create_telegram_accounts_in_db, warming_up, leave_all_chats
