@@ -14,6 +14,7 @@ def checking_proxy(proxy):
                 ),verify=True, timeout=20)
             result = True
         except Exception as ex:
+            print(ex)
             result = False
     return result
 
@@ -64,9 +65,6 @@ def recheck_proxy(proxy):
                 https=f'{proxy.type}://{proxy.login}:{proxy.password}@{proxy.host}:{proxy.port}',
                 http=f'{proxy.type}://{proxy.login}:{proxy.password}@{proxy.host}:{proxy.port}'
             ), verify=True, timeout=50)
-
-
-
             print("Proxy works")
             result = True
         except Exception as ex:
@@ -78,12 +76,7 @@ def get_one_proxy():
 
     proxies = read_proxy()
     if len(proxies)>0:
-        proxy_check_result = False
-        while proxy_check_result == False:
-            current_proxy = proxies[random.randint(0, len(proxies) - 1)]
-            print(f"Rechecking {current_proxy.host}")
-            proxy_check_result = recheck_proxy(current_proxy)
-            print(proxy_check_result)
+        current_proxy = proxies[random.randint(0, len(proxies) - 1)]
         return current_proxy
 
 

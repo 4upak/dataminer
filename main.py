@@ -153,18 +153,10 @@ def main(argumentList):
                 elif currentValue == "warming":
                     from ftelethon import get_account_from_db, get_client, update_account_id, \
                         create_telegram_accounts_in_db, warming_up, leave_all_chats
+                    warming_up()
+
+                elif currentValue == "load_telegram_account":
                     create_telegram_accounts_in_db()
-                    account_count = 1
-                    print(f"Account count{account_count}")
-
-                    account_from_db = get_account_from_db()
-                    account = account_from_db
-                    print(account)
-                    client = get_client(account)
-                    me = client.get_me()
-                    update_account_id(me, account)
-                    warming_up(client)
-
 
                 elif currentValue == "create_base":
                     from models.autoria_item import Autoria_item
@@ -174,6 +166,7 @@ def main(argumentList):
                     from models.proxy import Proxy
                     from models.task import Task
                     from models.telegram_account import Telegram_account
+                    from models.holivar import Holivar_unit
                     from models.telegram_account_groups import Telegram_account_groups
                     from database import Base, session, engine
                     Base.metadata.create_all(engine)
@@ -213,12 +206,14 @@ def main(argumentList):
                         session.add(task)
                         session.commit()
 
+                elif currentValue == "holivar":
+                    pass
+
+
 
 
     except getopt.error as err:
-        # output error, and return with an error code
         print(str(err))
 
-# Press the green button in thepython  gutter to run the script.
 if __name__ == '__main__':
     main(sys.argv[1:])

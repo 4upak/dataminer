@@ -138,10 +138,10 @@ def get_client(account):
     client = TelegramClient(f"taccounts/{account.session_file}", api_id=account.app_id, api_hash=account.app_hash,
                             proxy=(socks.HTTP, proxy.host, proxy.port, False, proxy.login, proxy.password))
     client.connect()
-    client.start()
     if not client.is_user_authorized():
         try:
-            client.get_me()
+            client.send_code_request(account.session_file)
+            client.start()
         except telethon.errors.rpc_error_list.PhoneNumberBannedError:
             print("Phone number is banned.")
             client.disconnect()
@@ -407,10 +407,13 @@ async def warming_up_controller(client,me):
                         {'deleted': 1})
                         session.commit()
 
-                    if re.search("You have joined too many channels", str(ex)):
+                    if re.search("joined too many channels", str(ex)):
                         session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
                         {'restricted': 1})
                         session.commit()
+
+
+
                     await asyncio.sleep(task.delay_after)
                     session.query(Task).filter(Task.task_id == task.task_id).delete()
                     session.commit()
@@ -439,7 +442,7 @@ async def warming_up_controller(client,me):
             session.commit()
             break
 
-        if invite_count >= 10:
+        if invite_count >= 20:
             print('invite_count limit exeded, breaking')
             await leave_all_chats(client, me)
             break
@@ -447,11 +450,14 @@ async def warming_up_controller(client,me):
 async def warming_up_handle(client):
     @client.on(events.NewMessage)
     async def my_event_handler(event):
-        sender = await event.get_sender()
-        count = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == sender.id).count()
-        if count > 0:
-            print(f"{sender.id} -> {me.id}: {event.raw_text}")
-            save_dialog(sender.id, me.id, event.raw_text)
+        try:
+            sender = await event.get_sender()
+            count = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == sender.id).count()
+            if count > 0:
+                print(f"{sender.id} -> {me.id}: {event.raw_text}")
+                save_dialog(sender.id, me.id, event.raw_text)
+        except Exception as ex:
+            print("пришло сообщение без сендера")
 
     await asyncio.sleep(20)
     client.start()
@@ -463,9 +469,7 @@ async def warming_up_handle(client):
     await warming_up_controller(client,me)
 
 
-def warming_up(client):
-    with client:
-        client.loop.run_until_complete(warming_up_handle(client))
+def warming_up():
     while True:
         account_from_db = get_account_from_db()
         account = account_from_db
@@ -476,4 +480,5 @@ def warming_up(client):
             with client:
                 client.loop.run_until_complete(warming_up_handle(client))
         except Exception as ex:
+            print("Клиент не запустился")
             print(ex)
