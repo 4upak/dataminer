@@ -31,6 +31,9 @@ class Telegram_account(Base):
     work = Column(Integer, default="0")
     restricted = Column(Integer, default="0")
     action = Column(String(250), nullable=False, default="-")
+    online = Column(Integer, default="0")
+    invite_restricted = Column(Integer, default="0")
+    message_restricted = Column(Integer, default="0")
 
 
 

@@ -83,9 +83,11 @@ def create_telegram_accounts_in_db():
     count = 0
     for account in new_accounts:
         data = get_account_info(account)
+
         data['telegram_user_id'] = 0
         data['phone_id'] = 1
         data['proxy'] = '-'
+
 
         tg = Telegram_account(data)
         session.add(tg)
@@ -100,7 +102,7 @@ def create_telegram_accounts_in_db():
 
 def get_account_from_db():
     try:
-        result =  session.query(Telegram_account).filter(Telegram_account.deleted==0).filter(Telegram_account.work==0).filter(Telegram_account.restricted==0).first()
+        result =  session.query(Telegram_account).filter(Telegram_account.deleted==0).filter(Telegram_account.work==0).filter(Telegram_account.restricted==0).filter(Telegram_account.online==0).filter(Telegram_account.action=='-').first()
         session.query(Telegram_account).filter(Telegram_account.telegram_id == result.telegram_id).update({'work': 2})
         session.commit()
 
@@ -135,17 +137,19 @@ def get_client(account):
     print(f"Starting using {proxy.host}")
     if  proxy.port == 45786:
         proxy.port = 45785
-    client = TelegramClient(f"taccounts/{account.session_file}", api_id=account.app_id, api_hash=account.app_hash,
+    try:
+        client = TelegramClient(f"taccounts/{account.session_file}", api_id=account.app_id, api_hash=account.app_hash,
                             proxy=(socks.HTTP, proxy.host, proxy.port, False, proxy.login, proxy.password))
-    client.connect()
-    if not client.is_user_authorized():
-        try:
-            client.send_code_request(account.session_file)
-            client.start()
-        except telethon.errors.rpc_error_list.PhoneNumberBannedError:
-            print("Phone number is banned.")
-            client.disconnect()
-            return False
+        client.connect()
+    except Exception as ex:
+        print("Session is banned.")
+        print(ex)
+        session.query(Telegram_account).filter(Telegram_account.telegram_id == account.telegram_id).update(
+            {'deleted': 1})
+        session.commit()
+        client.disconnect()
+        return False
+
     else:
         return client
 
@@ -334,118 +338,139 @@ async def join_chat(telegram_id, chat_id,client):
         return False
 
 async def warming_up_controller(client,me):
-    session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update({'action': 'warmin_up', 'work': 2})
-    session.commit()
-    count = 0
-    tasks = session.query(Task).filter(Task.sender_id == me.username).filter(Task.done == 0).all()
-    print(f"Tasl len:{len(tasks)}")
-    invite_count = 0
-    while True:
-        count +=1
-        print(f'iteration:{count} for {int(me.id)}')
-        task_count = session.query(Task).filter((Task.sender_id == me.username) | (Task.sender_id == 'all')).count()
-        if task_count > 0:
-            print(f'Есть {task_count} задания, приступаем к выполнению')
-            task = session.query(Task).filter((Task.sender_id == me.username) | (Task.sender_id == 'all')).first()
-            session.commit()
-            if task.type == 'send_message':
-                try:
-                    time.sleep(task.delay_before)
-                    await client.send_message(task.receipient_id, task.data)
-                    time.sleep(task.delay_after)
-                    session.query(Task).filter(Task.task_id == task.task_id).delete()
-                    save_dialog(me.id, task.receipient_id, task.data)
-                    print(f"{me.id}->{task.receipient_id} {task.data}")
-                except Exception as ex:
-                    print(ex)
-
-            if task.type == 'join_chat':
-                try:
-                    print(f"Try to join chat {task.receipient_id}")
-                    from telethon.tl.functions.channels import JoinChannelRequest
-                    time.sleep(task.delay_before)
-                    join_chat(me.id, task.receipient_id, client)
-
-                    print(f"{me.id} joined {task.receipient_id}")
-                    time.sleep(task.delay_after)
-                    session.query(Task).filter(Task.task_id == task.task_id).delete()
-                    session.commit()
-                except Exception as ex:
-                    print(ex)
-
-            if task.type == 'invite_to_chat':
-                try:
-                    print(f'[{invite_count}]{me.id} Try to invite {task.receipient_id} to {task.data}')
-                    from telethon.sync import TelegramClient
-                    from telethon import functions, types
-                    session.query(Task).filter(Task.task_id == task.task_id).delete()
-                    session.commit()
-
-                    await join_chat(me.id, task.data, client)
-                    await asyncio.sleep(task.delay_before)
-
-                    user_entity = await client.get_entity(task.receipient_id)
-                    target_group_entity = await client.get_entity(task.data)
-
-                    result = await client(functions.channels.InviteToChannelRequest(
-                        channel= target_group_entity,
-                        users= [user_entity]
-                    ))
-                    await asyncio.sleep(task.delay_after)
-
-                    invite_count+=1
-                    print(f'{task.receipient_id} добавлен в  {task.data}')
-
-                except Exception as ex:
-                    print(ex)
-                    if re.search('Too many requests', str(ex)) or re.search("banned from sending messages", str(ex)):
-                        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
-                            {'restricted': 1})
-                        session.commit()
-                    if re.search("deleted/deactivated", str(ex)):
-                        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
-                        {'deleted': 1})
-                        session.commit()
-
-                    if re.search("joined too many channels", str(ex)):
-                        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
-                        {'restricted': 1})
-                        session.commit()
-
-
-
-                    await asyncio.sleep(task.delay_after)
-                    session.query(Task).filter(Task.task_id == task.task_id).delete()
-                    session.commit()
-
-
-        time.sleep(2)
-        acc = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).first()
+    try:
+        client.start()
+        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update({'action': 'warmin_up', 'work': 2})
         session.commit()
+        count = 0
+        tasks = session.query(Task).filter(Task.sender_id == me.username).filter(Task.done == 0).all()
+        print(f"Tasl len:{len(tasks)}")
+        invite_count = 0
+        while True:
+            count +=1
+            print(f'iteration:{count} for {int(me.id)}')
+            task_count = session.query(Task).filter((Task.sender_id == me.username) | (Task.sender_id == 'all')).count()
+            if task_count > 0:
+                print(f'Есть {task_count} задания, приступаем к выполнению')
+                task = session.query(Task).filter((Task.sender_id == me.username) | (Task.sender_id == 'all')).first()
+                session.commit()
+                if task.type == 'send_message':
+                    try:
+                        time.sleep(task.delay_before)
+                        await client.send_message(task.receipient_id, task.data)
+                        time.sleep(task.delay_after)
+                        session.query(Task).filter(Task.task_id == task.task_id).delete()
+                        save_dialog(me.id, task.receipient_id, task.data)
+                        print(f"{me.id}->{task.receipient_id} {task.data}")
+                    except Exception as ex:
+                        print(ex)
 
-        if acc.restricted == 1:
-            print('account restricted, breacking')
-            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
-                {'action': '-'})
-            #print(f'Proxy {acc.proxy} deleted')
-            #session.query(Proxy).filter(Proxy.host == acc.proxy).delete()
+                if task.type == 'join_chat':
+                    try:
+                        print(f"Try to join chat {task.receipient_id}")
+                        from telethon.tl.functions.channels import JoinChannelRequest
+                        time.sleep(task.delay_before)
+                        join_chat(me.id, task.receipient_id, client)
+
+                        print(f"{me.id} joined {task.receipient_id}")
+                        time.sleep(task.delay_after)
+                        session.query(Task).filter(Task.task_id == task.task_id).delete()
+                        session.commit()
+                    except Exception as ex:
+                        print(ex)
+
+                if task.type == 'invite_to_chat':
+                    try:
+                        print(f'[{invite_count}]{me.id} Try to invite {task.receipient_id} to {task.data}')
+                        from telethon.sync import TelegramClient
+                        from telethon import functions, types
+                        session.query(Task).filter(Task.task_id == task.task_id).delete()
+                        session.commit()
+
+                        await join_chat(me.id, task.data, client)
+                        await asyncio.sleep(task.delay_before)
+
+                        user_entity = await client.get_entity(task.receipient_id)
+                        target_group_entity = await client.get_entity(task.data)
+
+                        result = await client(functions.channels.InviteToChannelRequest(
+                            channel= target_group_entity,
+                            users= [user_entity]
+                        ))
+                        await asyncio.sleep(task.delay_after)
+
+                        invite_count+=1
+                        print(f'{task.receipient_id} добавлен в  {task.data}')
+
+                    except Exception as ex:
+                        print(ex)
+                        if re.search('Too many requests', str(ex)) or re.search("banned from sending messages", str(ex)):
+                            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                                {'restricted': 1, 'message_restricted': 1})
+                            session.commit()
+                        if re.search("deleted/deactivated", str(ex)):
+                            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                            {'deleted': 1})
+                            session.commit()
+
+                        if re.search("joined too many channels", str(ex)):
+                            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                            {'restricted': 1, 'invite_restricted': 1})
+                            session.commit()
+
+                        if re.search("joined too many channels", str(ex)):
+                            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                            {'restricted': 1, 'invite_restricted': 1})
+                            session.commit()
+
+                        if re.search("seconds is required", str(ex)):
+                            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                            {'restricted': 1, 'invite_restricted': 1})
+                            session.commit()
+
+                        if re.search("have joined too many channels", str(ex)):
+                            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                            {'restricted': 1})
+                            session.commit()
+
+
+
+
+
+
+                        await asyncio.sleep(task.delay_after)
+                        session.query(Task).filter(Task.task_id == task.task_id).delete()
+                        session.commit()
+
+
+            time.sleep(2)
+            acc = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).first()
             session.commit()
-            await leave_all_chats(client, me)
-            break
 
-        if acc.deleted == 1:
-            print('account deleted, breacking')
-            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
-                {'action': '-', 'work': 0})
-            #print(f'Proxy {acc.proxy} deleted')
-            #session.query(Proxy).filter(Proxy.host == acc.proxy).delete()
-            session.commit()
-            break
+            if acc.restricted == 1:
+                print('account restricted, breacking')
+                session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                    {'action': '-', 'online':0})
+                session.commit()
+                await leave_all_chats(client, me)
+                break
 
-        if invite_count >= 20:
-            print('invite_count limit exeded, breaking')
-            await leave_all_chats(client, me)
-            break
+            if acc.deleted == 1:
+                print('account deleted, breacking')
+                break
+
+            if invite_count >= 20:
+                print('invite_count limit exeded, breaking')
+                await leave_all_chats(client, me)
+                break
+        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+            {'action': '-', 'work': 0, 'online':0})
+        session.commit()
+    except KeyboardInterrupt:
+        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+            {'action': '-', 'work': 0, 'online':0})
+        session.commit()
+        print("cleint disconected by keyboard interrupt")
 
 async def warming_up_handle(client):
     @client.on(events.NewMessage)
@@ -463,22 +488,29 @@ async def warming_up_handle(client):
     client.start()
 
     me = await client.get_me()
-
-
     print(me.stringify())
     await warming_up_controller(client,me)
 
 
 def warming_up():
+
     while True:
         account_from_db = get_account_from_db()
         account = account_from_db
         try:
             client = get_client(account)
             me = client.get_me()
+            session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+                {'online': 1})
+            session.commit()
             update_account_id(me, account)
+
+
             with client:
+
                 client.loop.run_until_complete(warming_up_handle(client))
         except Exception as ex:
-            print("Клиент не запустился")
-            print(ex)
+            print(f"Клиент {account.telegram_id} не запустился, ставим метку об удалении")
+            session.query(Telegram_account).filter(Telegram_account.telegram_id == account.telegram_id).update(
+                {'deleted': 1})
+            session.commit()

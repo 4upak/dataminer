@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, BigInteger
 from database import Base
 
 
@@ -8,7 +8,8 @@ class Holivar_unit(Base):
     key = Column(Integer, nullable=False)
     message = Column(String(250),nullable=False)
     answer_to_key = Column(Integer, default="0")
-    user_id = Column(Integer, nullable=False)
+    user_id = Column(BigInteger, nullable=False)
+    done = Column(Integer, default="0")
 
 
     def __init__(self, key, message, answer_to_key, user_id):
@@ -18,6 +19,7 @@ class Holivar_unit(Base):
         self.message = message
         self.answer_to_key = answer_to_key
         self.user_id = user_id
+        self.done = 0
 
     def __repr__(self):
         return f'key: {self.key}; message: {self.message}; answer_to_key: {self.answer_to_key}; user_id: {self.user_id}'
