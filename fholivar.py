@@ -16,6 +16,9 @@ from sqlalchemy import func
 import json
 import datetime
 import calendar
+from telethon import events, utils
+import os
+from models.action import Action
 
 
 def get_account_from_db_holivar(funnel_name):
@@ -48,7 +51,7 @@ def get_reply(text,me):
     else:
         return False
 
-def check_restriction(me,ex):
+def check_restriction(me,ex, funnel_name):
     if re.search('Too many requests', str(ex)) or re.search("banned from sending messages", str(ex)):
         session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
             {'restricted': 1, 'message_restricted': 1})
@@ -82,6 +85,28 @@ def check_restriction(me,ex):
         session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
             {'restricted': 1, 'message_restricted': 1})
         session.commit()
+
+    if re.search("Another reason may be that you were banned from it", str(ex)):
+        action_to_do = Action('reload_funnel', 'one of account was banned from current channel', funnel_name)
+        session.add(action_to_do)
+        session.commit()
+
+    if re.search("can't write in this chat", str(ex)):
+        action_to_do = Action('reload_funnel', 'one of account was banned from current channel', funnel_name)
+        session.add(action_to_do)
+        session.commit()
+
+    if re.search("seconds is required before sending another message in this chat", str(ex)):
+        action_to_do = Action('reload_funnel', 'one of account was banned from current channel', funnel_name)
+        session.add(action_to_do)
+        session.commit()
+
+
+        session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
+            {'restricted': 1, 'message_restricted': 1})
+        session.commit()
+
+
 
     return True
 
@@ -159,8 +184,9 @@ async def holivar_controller(client,me, funnel_name):
 
                     print(f"{me.id}->{task.receipient_id} {task.data}")
                 except Exception as ex:
-                    check_restriction(me, ex)
+                    check_restriction(me, ex,funnel_name)
                     session.query(Chat).filter(Chat.chat_login == task.receipient_id).update({'moderation_status': 1})
+                    session.query(Task).filter(Task.task_id == task.task_id).delete()
                     session.commit()
                     print(ex)
 
@@ -176,9 +202,10 @@ async def holivar_controller(client,me, funnel_name):
                     session.query(Task).filter(Task.task_id == task.task_id).delete()
                     session.commit()
                 except Exception as ex:
-                    check_restriction(me,ex)
+                    check_restriction(me,ex,funnel_name)
                     session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
                         {'restricted': 1})
+                    session.query(Task).filter(Task.task_id == task.task_id).delete()
                     session.commit()
                     print(ex)
 
@@ -190,9 +217,8 @@ async def holivar_controller(client,me, funnel_name):
                     session.query(Task).filter(Task.task_id == task.task_id).delete()
                     session.commit()
                 except Exception as ex:
-                    check_restriction(me, ex)
-                    session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
-                        {'restricted': 1})
+                    check_restriction(me, ex,funnel_name)
+                    session.query(Task).filter(Task.task_id == task.task_id).delete()
                     session.commit()
                     print(ex)
 
@@ -236,20 +262,33 @@ async def holivar_handle(client, funnel_name):
     @client.on(events.NewMessage)
     async def my_event_handler(event):
 
-        try:
-            reply = get_reply(event.raw_text, me)
+        sender = await event.get_sender()  # получаем имя юзера
+        user_name = utils.get_display_name(sender)  # Имя Юзера
+
+        chat_from = event.chat if event.chat else (await event.get_chat())  # получаем имя группы
+        chat_title = utils.get_display_name(chat_from)  # получаем имя группы
+
+        #print(f"sender:{sender.username}, user_name: {user_name}, chat_from: {chat_from.username}, chat_title:{chat_title}, chat_id:{event.chat_id}")
+
+        c = session.query(Chat).filter(Chat.chat_login == chat_from.username).filter(Chat.active == 1).count()
+        if c>0:
+            try:
+                reply = get_reply(event.raw_text, me)
 
 
-            if reply != False:
-                try:
-                    print(f"[{event.chat_id}] {event.raw_text}")
-                except Exception as ex:
-                    print(ex)
+                if reply != False:
+                    try:
+                        print(f"[{event.chat_id}] {event.raw_text}")
+                    except Exception as ex:
+                        print(f'Can not check reply for message from {chat_from.username}')
 
-                await asyncio.sleep(random.randint(20, 40))
-                await event.reply(reply)
-        except Exception as ex:
-            print(ex)
+                    await asyncio.sleep(random.randint(20, 40))
+                    await event.reply(reply)
+            except Exception as ex:
+                print(ex)
+        else:
+            await client.delete_dialog(chat_from)
+            print(f"{chat_from.username} has been deleted")
 
 
     await asyncio.sleep(20)
@@ -296,6 +335,35 @@ def holivar_check_accounts(funnel_name):
             return False
         time.sleep(5)
 
+def check_funnel_finish(funnel_name,current_chat):
+    count_done = session.query(Holivar_unit).filter(Holivar_unit.done == 1).filter(
+        Holivar_unit.funnel_name == funnel_name).count()
+    count_mess = session.query(Holivar_unit).filter(Holivar_unit.answer_to_key == 0).filter(
+        Holivar_unit.funnel_name == funnel_name).count()
+    if count_done == count_mess:
+        session.query(Chat).filter(Chat.chat_id == current_chat.chat_id).update(
+            {'active': 0, 'active_funnel': '-'})
+        session.commit()
+        return True
+    else:
+        return False
+
+def check_releoad_actions(funnel_name,current_chat):
+    action_count = session.query(Action).filter(Action.done == 0).filter(Action.funnel_name == funnel_name).count()
+    if action_count > 0:
+        action = session.query(Action).filter(Action.done == 0).filter(Action.funnel_name == funnel_name).first()
+        print(action.comment)
+        print(f"Reload funnel {funnel_name} action finded, current funnel stopped")
+
+        session.query(Action).filter(Action.done == 0).filter(Action.funnel_name == funnel_name).update({'done': 1})
+
+        session.query(Chat).filter(Chat.chat_id == current_chat.chat_id).update(
+            {'moderation_status': 1, 'active': 0, 'active_funnel': '-'})
+        session.commit()
+        return True
+    else:
+        return False
+
 def holivar_main(funnel_name):
     from testing import holivar
 
@@ -308,8 +376,7 @@ def holivar_main(funnel_name):
 
         date = datetime.datetime.utcnow()
         utc_time = calendar.timegm(date.utctimetuple())
-        session.query(Chat).filter(Chat.chat_id == current_chat.chat_id).update({'last_interaction': utc_time})
-        session.commit()
+
 
 
         print(f"Активный чат: {chat_to_holivar}")
@@ -327,7 +394,8 @@ def holivar_main(funnel_name):
                     Telegram_account.action == f'holivar_{funnel_name}').all()
                 random.shuffle(users)
                 break
-
+        session.query(Chat).filter(Chat.chat_id == current_chat.chat_id).update({'last_interaction': utc_time, 'active': 1, 'active_funnel': funnel_name})
+        session.commit()
         count = 0
         session.query(Holivar_unit).filter(Holivar_unit.funnel_name == funnel_name).delete()
         holivar_units = session.query(Funnel_unit).filter(Funnel_unit.funnel_name == funnel_name).all()
@@ -352,7 +420,7 @@ def holivar_main(funnel_name):
                 Holivar_unit.done == 0).count()
             session.commit()
             if count > 0:
-                print("Start hilovar")
+                print(f"Start hilovar {chat_to_holivar}")
                 unit = session.query(Holivar_unit).filter(Holivar_unit.answer_to_key == 0).filter(Holivar_unit.done == 0).filter(Holivar_unit.funnel_name == funnel_name).first()
                 print(unit)
                 user = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == unit.user_id).first()
@@ -379,9 +447,15 @@ def holivar_main(funnel_name):
 
             if holivar_check_accounts(funnel_name) == False:
                 print("Account crashed, relaunch funnel")
+                session.query(Chat).filter(Chat.chat_id == current_chat.chat_id).update({'active': 0, 'active_funnel': '-'})
+                session.commit()
                 break
 
-            count_done = session.query(Holivar_unit).filter(Holivar_unit.done == 1).count()
-            count_mess = session.query(Holivar_unit).filter(Holivar_unit.answer_to_key == 0).count()
-            if count_done == count_mess:
+            if check_releoad_actions(funnel_name, current_chat) == True:
                 break
+
+            if check_funnel_finish(funnel_name, current_chat) == True:
+                break
+
+
+

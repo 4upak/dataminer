@@ -9,6 +9,9 @@ class Chat(Base):
     members = Column(Integer, default=0)
     moderation_status = Column(Integer, default=0)
     last_interaction = Column(BigInteger, default=0)
+    active = Column(Integer, default=0)
+    active_funnel = Column(String(255), default='-')
+
 
     def __init__(self, chat_login, members, moderation_status, last_interaction):
         self.chat_login = chat_login

@@ -165,6 +165,7 @@ def main(argumentList):
                     from models.proxy import Proxy
                     from models.task import Task
                     from models.funnel import Funnel_unit
+                    from models.action import Action
                     from models.telegram_account import Telegram_account
                     from models.holivar import Holivar_unit
                     from models.chat import Chat
@@ -238,7 +239,7 @@ def main(argumentList):
 
                 elif currentValue == "holivar":
                     from fholivar import holivar_main
-                    funnel_name = 'dimon2'
+                    funnel_name = 'dimon'
                     holivar_main(funnel_name)
 
                 elif currentValue == "load_chats":
