@@ -164,8 +164,10 @@ def main(argumentList):
                     from models.dialog import Telegram_dialog
                     from models.proxy import Proxy
                     from models.task import Task
+                    from models.funnel import Funnel_unit
                     from models.telegram_account import Telegram_account
                     from models.holivar import Holivar_unit
+                    from models.chat import Chat
                     from models.telegram_account_groups import Telegram_account_groups
                     from database import Base, session, engine
                     Base.metadata.create_all(engine)
@@ -207,121 +209,48 @@ def main(argumentList):
                         session.add(task)
                         session.commit()
 
-                elif currentValue == "holivar":
-                    from database import Base, session, engine
-                    import fholivar
-                    import time
+
+
+
+
+
+
+
+
+
+
+                elif currentValue == "load_funnel":
                     from testing import holivar
-                    from models.holivar import Holivar_unit
-                    from models.telegram_account import Telegram_account
-                    from models.task import Task
-                    import random
+                    from models.funnel import Funnel_unit
+                    from database import Base, session, engine
 
 
-                    f = open("chats.txt", "r")
-                    lines = f.readlines()
-                    f.close()
-
-
-
-
-                    users = []
-                    while True:
-                        chat_to_holivar = lines[random.randrange(0, len(lines) - 1)]
-                        print(f"Ебашим {chat_to_holivar}")
-                        while True:
-                            count = session.query(Telegram_account).filter(Telegram_account.online==1).filter(Telegram_account.action=='holivar').count()
-                            session.commit()
-                            print(f"Аккаунтов в онлайне {count}")
-                            if count != 5:
-                                print("Аккаунтов не 5 шт")
-                                print("Ждем запуска аккаунтв")
-                                time.sleep(5)
-                            else:
-                                users = session.query(Telegram_account).filter(Telegram_account.online == 1).filter(Telegram_account.action == 'holivar').all()
-                                random.shuffle(users)
-                                break
-                        print(users)
-                        #ебашим диалог в базу
-                        count = 0
-                        session.query(Holivar_unit).delete()
-                        for row in holivar:
-                            unit = Holivar_unit(row['id'], row['mess'], row['answer_to'], users[int(row['user_id'])-1].telegram_user_id)
-                            session.add(unit)
-                            count += 1
-                        session.commit()
-
-                        print("Добавляем задание на вступление в чат")
-                        for user in users:
-                            task = Task('join_chat', user.telegram_user_id, chat_to_holivar, '-')
-                            task.delay_after = 10
-                            task.delay_before = 10
-                            session.add(task)
-                        session.commit()
-
-                        count = session.query(Telegram_account).filter(Telegram_account.online == 1).filter(Telegram_account.action == 'holivar').count()
-
-                        while True:
-
-                            count = session.query(Holivar_unit).filter(Holivar_unit.answer_to_key == 0).filter(Holivar_unit.done == 0).count()
-                            session.commit()
-                            if count>0:
-                                print("Начинаем холиварить")
-                                unit = session.query(Holivar_unit).filter(Holivar_unit.answer_to_key == 0).filter(Holivar_unit.done == 0).first()
-                                print(unit)
-                                user = session.query(Telegram_account).filter(Telegram_account.telegram_user_id == unit.user_id).first()
-                                print(user)
-
-                                task_sender = Task('send_message', user.telegram_user_id, chat_to_holivar, unit.message)
-                                session.add(task_sender)
-                                session.query(Holivar_unit).filter(Holivar_unit.unit_id == unit.unit_id).update({'done': 1})
-                                session.commit()
-
-                            print("Засыпаем")
-                            sleep_count = 0
-                            error_flag = 0
-                            while True:
-                                sleep_count+=1
-                                if sleep_count>24:
-                                    break
-                                acc_count = session.query(Telegram_account).filter(Telegram_account.online == 1).filter(
-                                    Telegram_account.action == 'holivar').count()
-                                session.commit()
-                                if acc_count != 5:
-                                    error_flag =1
-                                    break
-                                time.sleep(5)
-                            if error_flag ==1:
-                                print("Наебнулся аккаунт, стопаем воронку")
-                                break
-
-
-
-                            count_done = session.query(Holivar_unit).filter(Holivar_unit.done == 1).count()
-                            count_mess = session.query(Holivar_unit).filter(Holivar_unit.answer_to_key == 0).count()
-                            if count_done == count_mess:
-                                break
-
-
-
-
-
-
-                elif currentValue == "testing":
-                    from os import walk
-                    import random
-                    avatars = []
-                    for (dirpath, dirnames, filenames) in walk('avatars'):
-                        for file in filenames:
-                            avatars.append(file)
-                    print(avatars)
-                    new_avatar = avatars[random.randrange(0, len(avatars) - 1)]
-                    print(new_avatar)
+                    for unit in holivar:
+                        funnel_unit = Funnel_unit(unit['id'], unit['mess'], unit['json_data'], unit['answer_to'], unit['user_id'], unit['funnel_name'], unit['delay_before'],unit['delay_after'])
+                        session.add(funnel_unit)
+                    session.commit()
 
 
                 elif currentValue == "holivar_client":
                     from fholivar import holivar
-                    holivar()
+                    funnel_name = 'dimon2'
+                    holivar(funnel_name)
+
+                elif currentValue == "holivar":
+                    from fholivar import holivar_main
+                    funnel_name = 'dimon2'
+                    holivar_main(funnel_name)
+
+                elif currentValue == "load_chats":
+                    from models.chat import Chat
+                    from database import session
+                    f = open("chats.txt", "r")
+                    lines = f.readlines()
+                    f.close()
+                    for row in lines:
+                        chat = Chat(row.strip(), 0, 0, 0)
+                        session.add(chat)
+                    session.commit()
 
 
 
