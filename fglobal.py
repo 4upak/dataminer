@@ -3,6 +3,7 @@ from database import Base,session,engine
 from models.proxy import Proxy
 import random
 
+
 def checking_proxy(proxy):
     import requests
     result = False
@@ -83,5 +84,17 @@ def get_one_proxy():
     else:
         return False
 
+
+
+def get_free_proxy():
+    from models.telegram_account import Telegram_account
+    online_proxies = session.query(Telegram_account.proxy).filter(Telegram_account.online == 1).all()
+    all_proxies = read_proxy()
+    free_proxy = list(set(all_proxies)-set(online_proxies))
+    if len(free_proxy) > 0:
+        current_proxy = free_proxy[random.randint(0, len(free_proxy) - 1)]
+        return current_proxy
+    else:
+        return False
 
 

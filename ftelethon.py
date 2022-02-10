@@ -115,7 +115,7 @@ def get_account_from_db():
 
 def get_client(account):
 
-    from fglobal import get_one_proxy
+    from fglobal import get_free_proxy
     proxy = '-'
     print("Аккаунт:")
     print(account)
@@ -129,11 +129,25 @@ def get_client(account):
         count = session.query(Proxy).filter(Proxy.host == account.proxy).count()
         if count == 0:
             print("Proxy expired")
-            proxy = get_one_proxy()
+            proxy = get_free_proxy()
             session.query(Telegram_account).filter(Telegram_account.telegram_id == account.telegram_id).update({'proxy': proxy.host})
             session.commit()
         else:
             proxy = session.query(Proxy).filter(Proxy.host == account.proxy).first()
+
+        online_proxy_flag = session.query(Telegram_account).filter(Telegram_account.proxy == proxy.host).filter(Telegram_account.online == 1).count()
+        print(f"online_proxy_flag: {online_proxy_flag}")
+        if online_proxy_flag > 0:
+            print("Proxy is online, changing....")
+            proxy = get_free_proxy()
+            session.query(Telegram_account).filter(Telegram_account.telegram_id == account.telegram_id).update(
+                {'proxy': proxy.host})
+            session.commit()
+
+
+
+
+
     print(f"Starting using {proxy.host}")
     if  proxy.port == 45786:
         proxy.port = 45785
@@ -143,7 +157,7 @@ def get_client(account):
         client.connect()
     except Exception as ex:
         print("Session is banned.")
-        print(ex)
+        print(str(ex))
         session.query(Telegram_account).filter(Telegram_account.telegram_id == account.telegram_id).update(
             {'deleted': 1})
         session.commit()

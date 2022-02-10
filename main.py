@@ -234,7 +234,7 @@ def main(argumentList):
 
                 elif currentValue == "holivar_client":
                     from fholivar import holivar
-                    funnel_name = 'dimon2'
+                    funnel_name = 'dimon'
                     holivar(funnel_name)
 
                 elif currentValue == "holivar":
@@ -253,11 +253,9 @@ def main(argumentList):
                         session.add(chat)
                     session.commit()
 
-
-
-
-
-
+                elif currentValue == "test":
+                    from fglobal import get_free_proxy
+                    print(get_free_proxy())
 
 
     except getopt.error as err:

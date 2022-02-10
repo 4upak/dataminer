@@ -52,6 +52,7 @@ def get_reply(text,me):
         return False
 
 def check_restriction(me,ex, funnel_name):
+    print(str(ex))
     if re.search('Too many requests', str(ex)) or re.search("banned from sending messages", str(ex)):
         session.query(Telegram_account).filter(Telegram_account.telegram_user_id == int(me.id)).update(
             {'restricted': 1, 'message_restricted': 1})
@@ -168,7 +169,6 @@ async def holivar_controller(client,me, funnel_name):
     while True:
 
         count +=1
-        print(f'iteration:{count} for {int(me.id)}')
         task_count = session.query(Task).filter((Task.sender_id == me.id)).count()
         if task_count > 0:
             print(f'Есть {task_count} задания, приступаем к выполнению')

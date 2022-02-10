@@ -9,7 +9,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 holivar.append({
     'id':2,
@@ -19,7 +19,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 
 })
 holivar.append({
@@ -30,7 +30,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 
 holivar.append({
@@ -41,7 +41,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 holivar.append({
     'id':5,
@@ -51,7 +51,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 
 holivar.append({
@@ -62,7 +62,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 holivar.append({
     'id':7,
@@ -72,7 +72,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 
 holivar.append({
@@ -83,7 +83,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 
 holivar.append({
@@ -94,7 +94,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 
 holivar.append({
@@ -105,7 +105,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
     })
 holivar.append({
     'id': 11,
@@ -115,7 +115,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 
 holivar.append({
@@ -126,7 +126,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 
 holivar.append({
@@ -137,7 +137,7 @@ holivar.append({
     'json_data': "-",
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
 data ={
   "action": "send_image",
@@ -151,5 +151,5 @@ holivar.append({
     'json_data': json.dumps(data),
     'delay_before': 0,
     'delay_after': 120,
-    'funnel_name':'dimon2'
+    'funnel_name':'dimon3'
 })
